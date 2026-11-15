@@ -16,7 +16,11 @@ from turbdiff import diagnostics as dg
 from turbdiff import spectra
 from turbdiff.data import load, merge_json
 from turbdiff.diffusion import Schedule, sample_batches
-from turbdiff.gaussian import GaussianDenoiser, GaussianField
+from turbdiff.gaussian import (
+    GaussianDenoiser,
+    GaussianField,
+    noise_prediction_error,
+)
 from turbdiff.solver import Params, Solver
 from turbdiff.unet import UNet
 
@@ -122,6 +126,15 @@ def main() -> None:
         g = torch.Generator().manual_seed(args.seed + 1 + i)
         sources[name] = field.sample(args.samples, g)
     oracle = GaussianDenoiser(gens["g_mode"].power / sigma**2, sched)
+    held = data["val"].reshape(-1, n, n).double() / sigma
+    held = torch.cat([held, held])
+    noise = torch.randn(
+        (len(held), 1, n, n), generator=torch.Generator().manual_seed(12345)
+    )
+    t = (torch.arange(len(held)) * 397) % sched.steps
+    gaussian_loss = noise_prediction_error(
+        gens["g_mode"].power / sigma**2, sched, held, t, noise[:, 0]
+    )
     model = load_model(args.work / "ema.pt", args.base, args.forcing, device)
     for name, net, steps in (
         ("g_mode_ddim", oracle, args.steps),
@@ -165,6 +178,7 @@ def main() -> None:
         "sampler_seed": args.seed,
         "device": torch.cuda.get_device_name(0) if device == "cuda" else "cpu",
         "sigma": sigma,
+        "gaussian_validation_loss": gaussian_loss,
         "sampling_seconds": sampling_seconds,
         "evolution_time": span,
         "sources": {

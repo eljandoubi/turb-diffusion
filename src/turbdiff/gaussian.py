@@ -51,6 +51,26 @@ class GaussianField:
         return (self.n**2 * torch.fft.ifft2(self.power)).real
 
 
+def noise_prediction_error(
+    power: torch.Tensor,
+    sched: Schedule,
+    x0: torch.Tensor,
+    t: torch.Tensor,
+    noise: torch.Tensor,
+) -> float:
+    """Mean squared error of the exact Gaussian noise predictor on fields x0.
+
+    x0 and noise have shape (B, n, n), t holds one timestep per field.
+    """
+    lam = power.shape[-1] ** 2 * power.double()
+    ab = sched.alphas_bar[t][:, None, None]
+    xt = ab.sqrt() * x0.double() + (1 - ab).sqrt() * noise.double()
+    gain = (1 - ab).sqrt() / (ab * lam + 1 - ab)
+    spec = torch.fft.fft2(xt, norm="ortho") * gain
+    pred = torch.fft.ifft2(spec, norm="ortho").real
+    return ((pred - noise.double()) ** 2).mean().item()
+
+
 def krige(
     cov: torch.Tensor, index: torch.Tensor, values: torch.Tensor, jitter: float = 1e-9
 ) -> torch.Tensor:

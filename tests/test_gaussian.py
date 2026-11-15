@@ -1,7 +1,8 @@
 import torch
 
 from turbdiff import spectra
-from turbdiff.gaussian import GaussianField, condition
+from turbdiff.diffusion import Schedule
+from turbdiff.gaussian import GaussianField, condition, noise_prediction_error
 
 
 def anisotropic_power(n=64, kmax=10):
@@ -66,3 +67,17 @@ def test_conditional_sample_matches_the_observations():
     diff = sample.reshape(-1)[index] - truth.reshape(-1)[index]
     assert diff.abs().max() < 1e-5 * truth.abs().max()
     assert (sample - truth).norm() < (prior - truth).norm()
+
+
+def test_gaussian_noise_prediction_error_matches_its_formula():
+    power = anisotropic_power()
+    sched = Schedule()
+    g = torch.Generator().manual_seed(5)
+    x0 = GaussianField(power).sample(600, g)
+    noise = torch.randn(600, 64, 64, generator=g, dtype=torch.float64)
+    t = torch.full((600,), 300)
+    ab = sched.alphas_bar[300].item()
+    lam = 64**2 * power
+    expected = (ab * lam / (ab * lam + 1 - ab)).mean().item()
+    got = noise_prediction_error(power, sched, x0, t, noise)
+    assert abs(got / expected - 1) < 0.03
