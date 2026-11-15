@@ -95,7 +95,7 @@ def main() -> None:
     parser.add_argument("--long-steps", type=int, default=250)
     parser.add_argument("--base", type=int, default=48)
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--last", type=Path, default=None, help="last-step checkpoint")
+    parser.add_argument("--early", type=Path, default=None, help="earlier checkpoint")
     args = parser.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -130,12 +130,12 @@ def main() -> None:
         sources[name] = sample_chain(
             net, sched, args.samples, n, sigma, device, steps, args.seed
         )
-    if args.last is not None:
-        late = UNet(base=args.base).to(device)
-        late.load_state_dict(torch.load(args.last, map_location=device))
-        late.eval()
-        sources["diffusion_last"] = sample_chain(
-            late, sched, args.samples, n, sigma, device, args.steps, args.seed
+    if args.early is not None:
+        early = UNet(base=args.base).to(device)
+        early.load_state_dict(torch.load(args.early, map_location=device))
+        early.eval()
+        sources["diffusion_early"] = sample_chain(
+            early, sched, args.samples, n, sigma, device, args.steps, args.seed
         )
     sampling_seconds = time.time() - start
 
@@ -173,7 +173,7 @@ def main() -> None:
             "g_mode_ddim_long": "the same with more DDIM steps",
             "diffusion": "periodic UNet, EMA weights, DDIM",
             "diffusion_long": "the same network with more DDIM steps",
-            "diffusion_last": "EMA weights of the last training step, DDIM",
+            "diffusion_early": f"EMA weights of {args.early}, DDIM",
         },
     }
     merge_json(args.results / "diagnostics.json", {"setup": setup, "sources": results})

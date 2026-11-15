@@ -15,7 +15,7 @@ STEP_SOURCES = [
     "g_mode_ddim_long",
     "diffusion",
     "diffusion_long",
-    "diffusion_last",
+    "diffusion_early",
 ]
 TITLES = {
     "real_test": "real held-out",
@@ -26,7 +26,7 @@ TITLES = {
     "g_mode_ddim_long": "G mode, DDIM oracle long",
     "diffusion": "diffusion",
     "diffusion_long": "diffusion, DDIM long",
-    "diffusion_last": "diffusion, last step",
+    "diffusion_early": "diffusion, early checkpoint",
 }
 
 
@@ -46,7 +46,7 @@ def table(header: list[str], rows: list[list[str]]) -> str:
 def solver_table(info: dict) -> str:
     p, t, s = info["parameters"], info["turnover"], info["stationarity"]
     rows = [
-        ["grid", f"{p['n']} x {p['n']}, 2/3 rule (round(|k|) <= 21 kept)"],
+        ["grid", f"{p['n']} x {p['n']}, 2/3 rule (modes with round(abs(k)) <= 21)"],
         ["viscosity, drag", f"{g(p['nu'])}, {g(p['mu'])}"],
         ["forcing", f"{g(p['forcing_amplitude'])} cos({p['forcing_wavenumber']} y)"],
         ["time step", f"{g(p['dt'])} ({p['scheme']})"],
@@ -61,7 +61,35 @@ def solver_table(info: dict) -> str:
             "energy, first and second half",
             f"{g(s['first_half_mean'])}, {g(s['second_half_mean'])}",
         ],
+        [
+            "forced-mode coherence of the data",
+            g(info["forced_mode"]["coherence"]),
+        ],
+        [
+            "correlation of snapshots, lag 1 and 5",
+            ", ".join(
+                g(info["correlation_between_snapshots"][f"lag_{k}"]) for k in (1, 5)
+            ),
+        ],
     ]
+    checks = info.get("checks", {})
+    if "time_step" in checks:
+        ts = checks["time_step"]
+        rows.append(
+            [
+                "dt against dt / 2 after one turnover time",
+                f"relative L2 {g(ts['max_relative_l2_difference'])}, "
+                f"E(k) {g(ts['max_relative_difference_of_E_k'])}",
+            ]
+        )
+    if "resolution" in checks:
+        ratio = checks["resolution"]["ratio_data_over_fine_by_shell"]
+        rows.append(
+            [
+                "E(k) of the data over E(k) of a 128 x 128 run",
+                ", ".join(f"k={k}: {g(ratio[k - 1], 2)}" for k in (5, 10, 14, 18, 21)),
+            ]
+        )
     return table(["quantity", "value"], rows)
 
 
