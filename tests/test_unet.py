@@ -1,6 +1,6 @@
 import torch
 
-from turbdiff.unet import UNet, count_parameters
+from turbdiff.unet import UNet, conv, count_parameters
 
 
 def perturbed(model):
@@ -8,6 +8,26 @@ def perturbed(model):
     for p in model.parameters():
         p.data = torch.randn(p.shape, generator=g, dtype=p.dtype) * 0.1
     return model
+
+
+def test_periodic_convolution_commutes_with_any_shift():
+    layer = conv(2, 3).double()
+    x = torch.randn(1, 2, 16, 16, dtype=torch.float64)
+    for shift in [(1, 0), (0, 5), (7, 11)]:
+        moved = layer(torch.roll(x, shift, dims=(-2, -1)))
+        assert torch.allclose(
+            moved, torch.roll(layer(x), shift, dims=(-2, -1)), atol=1e-12
+        )
+
+
+def test_strided_periodic_convolution_commutes_with_even_shifts():
+    layer = conv(2, 3, stride=2).double()
+    x = torch.randn(1, 2, 16, 16, dtype=torch.float64)
+    out = layer(x)
+    for shift in [(2, 0), (0, 6), (4, 10)]:
+        moved = layer(torch.roll(x, shift, dims=(-2, -1)))
+        half = (shift[0] // 2, shift[1] // 2)
+        assert torch.allclose(moved, torch.roll(out, half, dims=(-2, -1)), atol=1e-12)
 
 
 def test_output_has_the_input_shape_and_starts_at_zero():
