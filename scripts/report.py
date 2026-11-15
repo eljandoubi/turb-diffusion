@@ -120,7 +120,7 @@ def diagnostics_table(diag: dict) -> str:
         ["forced-mode coherence"] + [g(src[s]["forced_mode_coherence"]) for s in names]
     )
     rows.append(
-        ["mean square outside k=21"]
+        ["share of mean square outside k=21"]
         + [g(src[s]["mean_square_outside_cutoff"]) for s in names]
     )
     for key, label in (
@@ -214,7 +214,7 @@ def start_table(start: dict) -> str:
         "start timestep",
         "first clean estimate, rms",
         "enstrophy / validation",
-        "outside k=21",
+        "share of mean square outside k=21",
         "E(k) all",
     ]
     return table(header, rows)
@@ -238,6 +238,14 @@ def training_lines() -> list[str]:
             f"{g(t['final_val_loss_ema'])}, selected step {t['selected_step']} "
             f"(held-out loss {g(t['selected_val_loss_ema'])})."
         )
+    diag = RESULTS / "diagnostics.json"
+    if out and diag.exists():
+        setup = json.loads(diag.read_text())["setup"]
+        if "gaussian_validation_loss" in setup:
+            out.append(
+                "- exact Gaussian denoiser, same held-out fields, timesteps and "
+                f"noise: loss {g(setup['gaussian_validation_loss'])}."
+            )
     return out
 
 
@@ -247,6 +255,11 @@ def main() -> None:
         ("Diagnostics", "diagnostics.json", diagnostics_table),
         ("Consistency", "consistency.json", consistency_table),
         ("Reconstruction", "reconstruction.json", reconstruction_table),
+        (
+            "Reconstruction, no forcing channel",
+            "reconstruction_plain.json",
+            reconstruction_table,
+        ),
         ("Sampler start, no forcing channel", "sampler_start.json", start_table),
         (
             "Sampler start, forcing channel",
