@@ -40,7 +40,7 @@ def grid(n: int) -> tuple[torch.Tensor, torch.Tensor]:
 class Solver:
     """Integrating-factor RK4 with the 2/3 rule, batched over leading axes."""
 
-    def __init__(self, params: Params):
+    def __init__(self, params: Params, device: str = "cpu"):
         n = params.n
         ky = torch.round(torch.fft.fftfreq(n, dtype=torch.float64) * n)[:, None]
         kx = torch.round(torch.fft.rfftfreq(n, dtype=torch.float64) * n)[None, :]
@@ -58,10 +58,12 @@ class Solver:
         y = 2 * torch.pi * torch.arange(n, dtype=torch.float64) / n
         force = (params.amp * torch.cos(params.kf * y))[:, None].expand(n, n)
         self.force_hat = torch.fft.rfft2(force) * self.mask
+        for name in ("ikx", "iky", "inv_k2", "mask", "e1", "e2", "force_hat"):
+            setattr(self, name, getattr(self, name).to(device))
 
     def to_hat(self, omega: torch.Tensor) -> torch.Tensor:
         """Truncated half spectrum of a physical field."""
-        return torch.fft.rfft2(omega.to(torch.float64)) * self.mask
+        return torch.fft.rfft2(omega.to(self.mask.device, torch.float64)) * self.mask
 
     def to_phys(self, w_hat: torch.Tensor) -> torch.Tensor:
         return torch.fft.irfft2(w_hat, s=(self.n, self.n))
