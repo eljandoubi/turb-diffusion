@@ -16,6 +16,7 @@ STEP_SOURCES = [
     "diffusion",
     "diffusion_long",
     "diffusion_early",
+    "diffusion_plain",
 ]
 TITLES = {
     "real_test": "real held-out",
@@ -27,6 +28,7 @@ TITLES = {
     "diffusion": "diffusion",
     "diffusion_long": "diffusion, DDIM long",
     "diffusion_early": "diffusion, early checkpoint",
+    "diffusion_plain": "diffusion, no forcing channel",
 }
 
 
@@ -194,12 +196,63 @@ def steps_table(diag: dict, cons: dict) -> str:
     return table(header, rows)
 
 
+def start_table(start: dict) -> str:
+    rows = []
+    for level, s in start["start"].items():
+        rows.append(
+            [
+                level,
+                str(s["start_timestep"]),
+                g(s["first_clean_estimate_rms"]),
+                g(s["enstrophy_over_validation"]),
+                g(s["mean_square_outside_cutoff"]),
+                g(s["band_log_ratio_all"]),
+            ]
+        )
+    header = [
+        "alpha_bar at the start",
+        "start timestep",
+        "first clean estimate, rms",
+        "enstrophy / validation",
+        "outside k=21",
+        "E(k) all",
+    ]
+    return table(header, rows)
+
+
+def training_lines() -> list[str]:
+    out = []
+    for name, label in (
+        ("train.json", "no forcing channel"),
+        ("train_forcing.json", "forcing channel"),
+    ):
+        path = RESULTS / name
+        if not path.exists():
+            continue
+        t = json.loads(path.read_text())
+        out.append(
+            f"- {label}: {t['parameters']:,} parameters, {t['steps']} steps of "
+            f"batch {t['batch']} on {t['device']} in "
+            f"{g(t['wall_clock_seconds'] / 60)} minutes, final train loss "
+            f"{g(t['final_train_loss'])}, held-out loss "
+            f"{g(t['final_val_loss_ema'])}, selected step {t['selected_step']} "
+            f"(held-out loss {g(t['selected_val_loss_ema'])})."
+        )
+    return out
+
+
 def main() -> None:
     for title, name, fn in (
         ("Solver", "solver.json", solver_table),
         ("Diagnostics", "diagnostics.json", diagnostics_table),
         ("Consistency", "consistency.json", consistency_table),
         ("Reconstruction", "reconstruction.json", reconstruction_table),
+        ("Sampler start, no forcing channel", "sampler_start.json", start_table),
+        (
+            "Sampler start, forcing channel",
+            "sampler_start_forcing.json",
+            start_table,
+        ),
     ):
         path = RESULTS / name
         if path.exists():
@@ -208,20 +261,13 @@ def main() -> None:
             print()
     both = (RESULTS / "diagnostics.json", RESULTS / "consistency.json")
     if all(p.exists() for p in both):
-        print("### DDIM steps\n")
+        print("### Sampler and network variants\n")
         print(steps_table(*(json.loads(p.read_text()) for p in both)))
         print()
-    train = RESULTS / "train.json"
-    if train.exists():
-        t = json.loads(train.read_text())
+    lines = training_lines()
+    if lines:
         print("### Training\n")
-        print(
-            f"{t['parameters']:,} parameters, {t['steps']} steps of batch "
-            f"{t['batch']} on {t['device']} in "
-            f"{g(t['wall_clock_seconds'] / 60)} minutes, final train loss "
-            f"{g(t['final_train_loss'])}, held-out loss "
-            f"{g(t['final_val_loss_ema'])}."
-        )
+        print("\n".join(lines))
 
 
 if __name__ == "__main__":

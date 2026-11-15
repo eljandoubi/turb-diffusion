@@ -13,6 +13,7 @@ import torch
 from turbdiff import spectra
 from turbdiff.data import load, merge_json
 from turbdiff.diffusion import Schedule, sample_batches, start_index
+from turbdiff.solver import Params
 from turbdiff.unet import UNet
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -39,6 +40,7 @@ def main() -> None:
     parser.add_argument("--samples", type=int, default=100)
     parser.add_argument("--steps", type=int, default=50)
     parser.add_argument("--base", type=int, default=48)
+    parser.add_argument("--forcing", action="store_true", help="forcing channel")
     args = parser.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -47,9 +49,9 @@ def main() -> None:
     val = data["val"].reshape(-1, n, n).double() / data["sigma"]
     ref = spectra.energy_spectrum(val).mean(0)
     sched = Schedule()
-    model = UNet(base=args.base).to(device)
+    model = UNet(base=args.base, forcing_wavenumber=Params().kf if args.forcing else 0)
     model.load_state_dict(torch.load(args.work / "ema.pt", map_location=device))
-    model.eval()
+    model = model.to(device).eval()
 
     rows = {}
     for level in LEVELS:
@@ -74,8 +76,10 @@ def main() -> None:
         "samples": args.samples,
         "ddim_steps": args.steps,
         "reference": "validation",
+        "forcing_channel": args.forcing,
     }
-    merge_json(args.results / "sampler_start.json", {"setup": setup, "start": rows})
+    name = "sampler_start_forcing.json" if args.forcing else "sampler_start.json"
+    merge_json(args.results / name, {"setup": setup, "start": rows})
 
 
 if __name__ == "__main__":

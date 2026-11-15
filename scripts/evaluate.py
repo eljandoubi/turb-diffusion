@@ -29,6 +29,13 @@ def sample_chain(model, sched, count, n, sigma, device, steps, seed):
     return sample_batches(model, sched, count, n, device, steps, seed) * sigma
 
 
+def load_model(path, base, forcing, device):
+    """The EMA weights of a trained network, in eval mode."""
+    model = UNet(base=base, forcing_wavenumber=PARAMS.kf if forcing else 0)
+    model.load_state_dict(torch.load(path, map_location=device))
+    return model.to(device).eval()
+
+
 def describe(x, real, train, ref, device, in_train=False):
     """Diagnostics of a set of fields against the real held-out set."""
     x = x.double()
@@ -90,7 +97,9 @@ def main() -> None:
     parser.add_argument("--long-steps", type=int, default=250)
     parser.add_argument("--base", type=int, default=48)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--forcing", action="store_true", help="forcing channel")
     parser.add_argument("--early", type=Path, default=None, help="earlier checkpoint")
+    parser.add_argument("--plain", type=Path, default=None, help="no-forcing model")
     args = parser.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -113,9 +122,7 @@ def main() -> None:
         g = torch.Generator().manual_seed(args.seed + 1 + i)
         sources[name] = field.sample(args.samples, g)
     oracle = GaussianDenoiser(gens["g_mode"].power / sigma**2, sched)
-    model = UNet(base=args.base).to(device)
-    model.load_state_dict(torch.load(args.work / "ema.pt", map_location=device))
-    model.eval()
+    model = load_model(args.work / "ema.pt", args.base, args.forcing, device)
     for name, net, steps in (
         ("g_mode_ddim", oracle, args.steps),
         ("g_mode_ddim_long", oracle, args.long_steps),
@@ -125,13 +132,14 @@ def main() -> None:
         sources[name] = sample_chain(
             net, sched, args.samples, n, sigma, device, steps, args.seed
         )
-    if args.early is not None:
-        early = UNet(base=args.base).to(device)
-        early.load_state_dict(torch.load(args.early, map_location=device))
-        early.eval()
-        sources["diffusion_early"] = sample_chain(
-            early, sched, args.samples, n, sigma, device, args.steps, args.seed
-        )
+    others = {"diffusion_early": (args.early, args.forcing)}
+    others["diffusion_plain"] = (args.plain, False)
+    for name, (path, forcing) in others.items():
+        if path is not None:
+            net = load_model(path, args.base, forcing, device)
+            sources[name] = sample_chain(
+                net, sched, args.samples, n, sigma, device, args.steps, args.seed
+            )
     sampling_seconds = time.time() - start
 
     ref_spectrum = spectra.energy_spectrum(real).mean(0)
@@ -169,7 +177,9 @@ def main() -> None:
             "diffusion": "periodic UNet, EMA weights, DDIM",
             "diffusion_long": "the same network with more DDIM steps",
             "diffusion_early": f"EMA weights of {args.early}, DDIM",
+            "diffusion_plain": f"network without the forcing channel, {args.plain}",
         },
+        "forcing_channel": args.forcing,
     }
     merge_json(args.results / "diagnostics.json", {"setup": setup, "sources": results})
     merge_json(

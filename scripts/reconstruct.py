@@ -15,6 +15,7 @@ from turbdiff.data import load, merge_json
 from turbdiff.diffusion import Schedule, ddim_sample
 from turbdiff.gaussian import GaussianField, condition
 from turbdiff.reconstruct import point_mask, random_points, relative_l2, spectrum_error
+from turbdiff.solver import Params
 from turbdiff.unet import UNet
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -54,6 +55,7 @@ def main() -> None:
     parser.add_argument("--val-fields", type=int, default=50)
     parser.add_argument("--steps", type=int, default=50)
     parser.add_argument("--base", type=int, default=48)
+    parser.add_argument("--forcing", action="store_true", help="forcing channel")
     args = parser.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -66,9 +68,9 @@ def main() -> None:
     val = val[:: len(val) // args.val_fields][: args.val_fields]
     gauss = GaussianField.fit(train)
     sched = Schedule()
-    model = UNet(base=args.base).to(device)
+    model = UNet(base=args.base, forcing_wavenumber=Params().kf if args.forcing else 0)
     model.load_state_dict(torch.load(args.work / "ema.pt", map_location=device))
-    model.eval()
+    model = model.to(device).eval()
 
     variants = {}
     for fresh, name in ((True, "fresh_noise"), (False, "predicted_noise")):
@@ -141,6 +143,7 @@ def main() -> None:
         "ddim_steps": args.steps,
         "device": torch.cuda.get_device_name(0) if device == "cuda" else "cpu",
         "replacement": chosen,
+        "forcing_channel": args.forcing,
         "validation_fields_for_variant": len(val),
     }
     merge_json(
