@@ -1,9 +1,9 @@
 """Train the periodic UNet DDPM on the vorticity fields.
 
-Writes results/train.json and results/train_log.csv. The weights go to --work
-and are not tracked: one EMA checkpoint per evaluation, and ema.pt, the one with
-the lowest held-out noise-prediction error. A GPU is recommended; on a CPU use a
-few steps to test.
+Writes results/train.json and results/train_log.csv (train_x.json and
+train_log_x.csv with --tag _x). The weights go to --work and are not tracked:
+one EMA checkpoint per evaluation, and ema.pt, the one with the lowest held-out
+noise-prediction error. A GPU is recommended; on a CPU use a few steps to test.
 """
 
 import argparse
@@ -56,6 +56,8 @@ def main() -> None:
     parser.add_argument("--base", type=int, default=48)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--compile", action="store_true")
+    parser.add_argument("--forcing", action="store_true", help="forcing input channel")
+    parser.add_argument("--tag", default="", help="suffix of the result file names")
     args = parser.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -66,7 +68,11 @@ def main() -> None:
     val = (data["val"].reshape(-1, 1, n, n) / data["sigma"]).to(device)
     period_y = n // Params().kf
 
-    model = UNet(base=args.base, dropout=args.dropout).to(device)
+    model = UNet(
+        base=args.base,
+        dropout=args.dropout,
+        forcing_wavenumber=Params().kf if args.forcing else 0,
+    ).to(device)
     ema = EMA(model, args.ema)
     net = torch.compile(model) if args.compile else model
     sched = Schedule()
@@ -110,17 +116,18 @@ def main() -> None:
     best = min(log, key=lambda row: row["val_loss_ema"])
     shutil.copy(args.work / f"ema_{best['step']}.pt", args.work / "ema.pt")
     args.results.mkdir(parents=True, exist_ok=True)
-    with open(args.results / "train_log.csv", "w", newline="") as f:
+    with open(args.results / f"train_log{args.tag}.csv", "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=list(log[0]))
         writer.writeheader()
         writer.writerows(log)
     merge_json(
-        args.results / "train.json",
+        args.results / f"train{args.tag}.json",
         {
             "device": torch.cuda.get_device_name(0) if amp else "cpu",
             "fp16_autocast": amp,
             "parameters": count_parameters(model),
             "base_channels": args.base,
+            "forcing_channel": args.forcing,
             "dropout": args.dropout,
             "weight_decay": args.weight_decay,
             "torch_compile": args.compile,
@@ -139,7 +146,8 @@ def main() -> None:
             "seed": args.seed,
         },
     )
-    print(f"selected step {best['step']}, wrote {args.results / 'train.json'}")
+    out = args.results / f"train{args.tag}.json"
+    print(f"selected step {best['step']}, wrote {out}")
 
 
 if __name__ == "__main__":
