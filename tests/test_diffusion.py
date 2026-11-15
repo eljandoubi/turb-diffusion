@@ -1,5 +1,4 @@
 import torch
-from torch import nn
 
 from turbdiff import spectra
 from turbdiff.diffusion import (
@@ -10,24 +9,8 @@ from turbdiff.diffusion import (
     noisy,
     training_loss,
 )
-from turbdiff.gaussian import GaussianField
+from turbdiff.gaussian import GaussianDenoiser, GaussianField
 from turbdiff.unet import UNet
-
-
-class GaussianDenoiser(nn.Module):
-    """Exact noise predictor for data that is Gaussian with a given mode power."""
-
-    def __init__(self, power, sched):
-        super().__init__()
-        n = power.shape[-1]
-        self.lam = n**2 * power
-        self.bars = sched.alphas_bar
-
-    def forward(self, x, t):
-        ab = self.bars[t[0]].item()
-        gain = (1 - ab) ** 0.5 / (ab * self.lam + 1 - ab)
-        spec = torch.fft.fft2(x.double(), norm="ortho") * gain
-        return torch.fft.ifft2(spec, norm="ortho").real.float()
 
 
 def test_cosine_schedule_starts_at_one_and_decreases():

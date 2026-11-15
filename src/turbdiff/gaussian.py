@@ -1,8 +1,30 @@
 """Gaussian random field baselines and Gaussian conditioning (kriging)."""
 
 import torch
+from torch import nn
 
 from turbdiff import spectra
+from turbdiff.diffusion import Schedule
+
+
+class GaussianDenoiser(nn.Module):
+    """Exact noise predictor for Gaussian data with a given power per mode.
+
+    It stands in for a perfectly trained network, so that sampling with it shows
+    what the sampler alone does to a Gaussian field.
+    """
+
+    def __init__(self, power: torch.Tensor, sched: Schedule):
+        super().__init__()
+        self.lam = power.shape[-1] ** 2 * power.double()
+        self.bars = sched.alphas_bar
+
+    def forward(self, x: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
+        lam = self.lam.to(x.device)
+        ab = self.bars[t[0]].item()
+        gain = (1 - ab) ** 0.5 / (ab * lam + 1 - ab)
+        spec = torch.fft.fft2(x.double(), norm="ortho") * gain
+        return torch.fft.ifft2(spec, norm="ortho").real.to(x.dtype)
 
 
 class GaussianField:
