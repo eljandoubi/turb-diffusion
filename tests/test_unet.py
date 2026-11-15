@@ -60,3 +60,21 @@ def test_unet_does_not_commute_with_a_single_pixel_shift():
     assert not torch.allclose(
         moved, torch.roll(model(x, t), (1, 0), (-2, -1)), atol=1e-6
     )
+
+
+def test_forcing_channel_pins_the_phase_along_y():
+    x = torch.randn(2, 1, 32, 32, dtype=torch.float64)
+    t = torch.tensor([10, 500])
+    plain = perturbed(UNet(base=8)).double().eval()
+    pinned = perturbed(UNet(base=8, forcing_wavenumber=2)).double().eval()
+    # the forcing cos(2 y) has a period of 16 rows: 8 rows flip its sign
+    for model, expected in ((plain, True), (pinned, False)):
+        moved = model(torch.roll(x, (8, 0), dims=(-2, -1)), t)
+        same = torch.allclose(
+            moved, torch.roll(model(x, t), (8, 0), (-2, -1)), atol=1e-9
+        )
+        assert same == expected
+    for shift in [(16, 0), (0, 8), (32, 24)]:
+        moved = pinned(torch.roll(x, shift, dims=(-2, -1)), t)
+        ref = torch.roll(pinned(x, t), shift, dims=(-2, -1))
+        assert torch.allclose(moved, ref, atol=1e-9)

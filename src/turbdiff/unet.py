@@ -19,6 +19,13 @@ def conv(cin: int, cout: int, stride: int = 1) -> nn.Conv2d:
     return nn.Conv2d(cin, cout, 3, stride=stride, padding=1, padding_mode="circular")
 
 
+def forcing_pattern(x: torch.Tensor, kf: int) -> torch.Tensor:
+    """cos(kf y) on the grid of x (B, C, n, n), as one channel."""
+    n = x.shape[-1]
+    y = 2 * math.pi * torch.arange(n, device=x.device, dtype=x.dtype) / n
+    return torch.cos(kf * y)[None, None, :, None].expand(x.shape[0], 1, n, n)
+
+
 class ResBlock(nn.Module):
     def __init__(self, cin: int, cout: int, tdim: int, dropout: float, groups: int = 8):
         super().__init__()
@@ -56,13 +63,19 @@ class Attention(nn.Module):
 
 
 class UNet(nn.Module):
-    """Noise predictor for fields of shape (B, 1, n, n), n divisible by 2 ** depth."""
+    """Noise predictor for fields of shape (B, 1, n, n), n divisible by 2 ** depth.
+
+    With forcing_wavenumber k the input gets a second channel cos(k y), the
+    pattern of the forcing. Without it the network commutes with shifts by the
+    total stride and cannot pin the phase of the flow to the forcing.
+    """
 
     def __init__(
         self,
         base: int = 48,
         mult: tuple[int, ...] = (1, 2, 2, 2),
         dropout: float = 0.0,
+        forcing_wavenumber: int = 0,
     ):
         super().__init__()
         chs = [base * m for m in mult]
@@ -72,11 +85,12 @@ class UNet(nn.Module):
             return ResBlock(cin, cout, tdim, dropout)
 
         self.base = base
+        self.forcing = forcing_wavenumber
         self.stride = 2 ** (len(chs) - 1)
         self.time = nn.Sequential(
             nn.Linear(base, tdim), nn.SiLU(), nn.Linear(tdim, tdim)
         )
-        self.inp = conv(1, base)
+        self.inp = conv(2 if forcing_wavenumber else 1, base)
         self.enc = nn.ModuleList()
         self.down = nn.ModuleList()
         c = base
@@ -103,6 +117,8 @@ class UNet(nn.Module):
 
     def forward(self, x: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
         temb = self.time(timestep_embedding(t, self.base).to(x.dtype))
+        if self.forcing:
+            x = torch.cat([x, forcing_pattern(x, self.forcing)], dim=1)
         h = self.inp(x)
         skips = []
         for i, blocks in enumerate(self.enc):
