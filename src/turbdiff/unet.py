@@ -20,19 +20,20 @@ def conv(cin: int, cout: int, stride: int = 1) -> nn.Conv2d:
 
 
 class ResBlock(nn.Module):
-    def __init__(self, cin: int, cout: int, tdim: int, groups: int = 8):
+    def __init__(self, cin: int, cout: int, tdim: int, dropout: float, groups: int = 8):
         super().__init__()
         self.norm1 = nn.GroupNorm(groups, cin)
         self.conv1 = conv(cin, cout)
         self.temb = nn.Linear(tdim, cout)
         self.norm2 = nn.GroupNorm(groups, cout)
+        self.drop = nn.Dropout(dropout)
         self.conv2 = conv(cout, cout)
         self.skip = nn.Conv2d(cin, cout, 1) if cin != cout else nn.Identity()
 
     def forward(self, x: torch.Tensor, temb: torch.Tensor) -> torch.Tensor:
         h = self.conv1(F.silu(self.norm1(x)))
         h = h + self.temb(F.silu(temb))[:, :, None, None]
-        h = self.conv2(F.silu(self.norm2(h)))
+        h = self.conv2(self.drop(F.silu(self.norm2(h))))
         return h + self.skip(x)
 
 
@@ -57,10 +58,19 @@ class Attention(nn.Module):
 class UNet(nn.Module):
     """Noise predictor for fields of shape (B, 1, n, n), n divisible by 2 ** depth."""
 
-    def __init__(self, base: int = 48, mult: tuple[int, ...] = (1, 2, 2, 2)):
+    def __init__(
+        self,
+        base: int = 48,
+        mult: tuple[int, ...] = (1, 2, 2, 2),
+        dropout: float = 0.0,
+    ):
         super().__init__()
         chs = [base * m for m in mult]
         tdim = 4 * base
+
+        def block(cin: int, cout: int) -> ResBlock:
+            return ResBlock(cin, cout, tdim, dropout)
+
         self.base = base
         self.stride = 2 ** (len(chs) - 1)
         self.time = nn.Sequential(
@@ -71,22 +81,18 @@ class UNet(nn.Module):
         self.down = nn.ModuleList()
         c = base
         for i, ch in enumerate(chs):
-            self.enc.append(
-                nn.ModuleList([ResBlock(c, ch, tdim), ResBlock(ch, ch, tdim)])
-            )
+            self.enc.append(nn.ModuleList([block(c, ch), block(ch, ch)]))
             c = ch
             if i < len(chs) - 1:
                 self.down.append(conv(c, c, stride=2))
-        self.mid1 = ResBlock(c, c, tdim)
+        self.mid1 = block(c, c)
         self.attn = Attention(c)
-        self.mid2 = ResBlock(c, c, tdim)
+        self.mid2 = block(c, c)
         self.dec = nn.ModuleList()
         self.up = nn.ModuleList()
         for i in reversed(range(len(chs))):
             self.dec.append(
-                nn.ModuleList(
-                    [ResBlock(2 * chs[i], chs[i], tdim), ResBlock(chs[i], chs[i], tdim)]
-                )
+                nn.ModuleList([block(2 * chs[i], chs[i]), block(chs[i], chs[i])])
             )
             if i > 0:
                 self.up.append(conv(chs[i], chs[i - 1]))
