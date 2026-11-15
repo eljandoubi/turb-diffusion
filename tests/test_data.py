@@ -1,30 +1,58 @@
+import math
+
+import pytest
 import torch
 
-from turbdiff.data import random_shifts
+from turbdiff.data import (
+    half_turn,
+    random_symmetries,
+    reflect_x,
+    shift_reflect,
+    symmetry_cosets,
+)
+from turbdiff.solver import Params, Solver, grid, random_vorticity
 
 
-def test_shifts_are_circular_rolls_by_allowed_amounts():
-    g = torch.Generator().manual_seed(0)
-    x = torch.randn(32, 1, 16, 16, generator=g)
-    out = random_shifts(x, period_y=4, generator=g)
-    assert out.shape == x.shape
-    for field, moved in zip(x, out, strict=True):
-        found = False
-        for sy in range(0, 16, 4):
-            for sx in range(16):
-                if torch.equal(torch.roll(field, (sy, sx), dims=(-2, -1)), moved):
-                    found = True
-        assert found
+def test_reflections_and_turns_square_to_shifts():
+    x = torch.randn(1, 1, 16, 16, generator=torch.Generator().manual_seed(0))
+    assert torch.equal(reflect_x(reflect_x(x)), x)
+    assert torch.equal(half_turn(half_turn(x)), x)
+    twice = shift_reflect(shift_reflect(x, 2), 2)
+    assert torch.equal(twice, torch.roll(x, -4, dims=-2))
 
 
-def test_shifts_use_every_allowed_amount():
+def test_maps_act_on_coordinates_as_described():
+    y, x = grid(32)
+    w = torch.sin(2 * x + y)
+    assert torch.allclose(reflect_x(w), torch.sin(-2 * x + y))
+    assert torch.allclose(half_turn(w), torch.sin(-2 * x - y))
+    expected = -torch.sin(-2 * x + y + math.pi / 4)
+    assert torch.allclose(shift_reflect(w, 4), expected)
+
+
+@pytest.mark.parametrize("index", [1, 2, 3])
+def test_solver_commutes_with_the_symmetries_of_the_flow(index):
+    params = Params()
+    solver = Solver(params)
+    fn = symmetry_cosets(params.n // params.kf)[index]
+    g = torch.Generator().manual_seed(index)
+    w = random_vorticity((2,), params.n, 2.0, 4.0, g)
+    moved_after = fn(solver.evolve(w, 0.5))
+    moved_before = solver.evolve(fn(w), 0.5)
+    assert (moved_after - moved_before).abs().max() < 1e-9 * w.abs().max()
+
+
+def test_random_symmetries_stay_in_the_group_and_cover_it():
+    n, period = 16, 4
+    base = torch.arange(1, n * n + 1, dtype=torch.float32).reshape(1, 1, n, n)
+    group = set()
+    for fn in symmetry_cosets(period):
+        for sy in range(0, n, period):
+            for sx in range(n):
+                moved = torch.roll(fn(base), (sy, sx), dims=(-2, -1))
+                group.add(tuple(moved.flatten().tolist()))
+    assert len(group) == 4 * (n // period) * n
     g = torch.Generator().manual_seed(1)
-    base = torch.arange(16 * 16, dtype=torch.float32).reshape(1, 1, 16, 16)
-    seen = set()
-    for _ in range(400):
-        moved = random_shifts(base, 4, g)
-        (iy, ix) = divmod(int(torch.argmin(moved).item()), 16)
-        seen.add((iy % 4, iy // 4, ix))
-    assert {s[0] for s in seen} == {0}
-    assert len({s[1] for s in seen}) == 4
-    assert len({s[2] for s in seen}) == 16
+    out = random_symmetries(base.expand(8000, 1, n, n), period, g)
+    seen = {tuple(o.flatten().tolist()) for o in out}
+    assert seen == group

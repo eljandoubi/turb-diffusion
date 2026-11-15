@@ -75,25 +75,56 @@ def load(path: Path) -> dict:
     return out
 
 
-def random_shifts(
+def reflect_x(x: torch.Tensor) -> torch.Tensor:
+    """Fields w(x, y) -> w(-x, y)."""
+    return torch.roll(torch.flip(x, dims=(-1,)), 1, dims=-1)
+
+
+def half_turn(x: torch.Tensor) -> torch.Tensor:
+    """Fields w(x, y) -> w(-x, -y)."""
+    return torch.roll(torch.flip(x, dims=(-2, -1)), (1, 1), dims=(-2, -1))
+
+
+def shift_reflect(x: torch.Tensor, half_period: int) -> torch.Tensor:
+    """Fields w(x, y) -> -w(-x, y + half_period), half the forcing period in y."""
+    return -torch.roll(reflect_x(x), -half_period, dims=-2)
+
+
+def symmetry_cosets(period_y: int) -> list:
+    """The four maps that, with the shifts, generate the symmetries of the flow.
+
+    The forcing cos(kf y) is unchanged by the half turn and by reflecting x while
+    shifting y by half a forcing period (which also flips the sign of w), so the
+    equations and their statistics are invariant under both, as under the shifts.
+    """
+    half = period_y // 2
+    return [
+        lambda x: x,
+        half_turn,
+        lambda x: shift_reflect(x, half),
+        lambda x: shift_reflect(half_turn(x), half),
+    ]
+
+
+def random_symmetries(
     x: torch.Tensor, period_y: int, generator: torch.Generator
 ) -> torch.Tensor:
-    """Shift each field of (B, 1, n, n) by a random circular amount.
+    """Apply a random symmetry of the flow to each field of (B, 1, n, n).
 
-    The flow statistics are invariant to any shift along x and to shifts along y
-    by multiples of the forcing period, so only those shifts are drawn.
+    The symmetries are the shifts along x, the shifts along y by multiples of
+    the forcing period, the half turn, and the reflection with a half-period
+    shift in y.
     """
     b, _, n, _ = x.shape
     dev = x.device
+    coset = torch.randint(0, 4, (b,), generator=generator, device=dev)
+    out = x
+    for i, fn in enumerate(symmetry_cosets(period_y)[1:], start=1):
+        out = torch.where((coset == i)[:, None, None, None], fn(x), out)
     sy = torch.randint(0, n // period_y, (b,), generator=generator, device=dev)
     sx = torch.randint(0, n, (b,), generator=generator, device=dev)
     ar = torch.arange(n, device=dev)
     rows = (ar[None, :] - (sy * period_y)[:, None]) % n
     cols = (ar[None, :] - sx[:, None]) % n
-    picked = x[
-        torch.arange(b, device=dev)[:, None, None],
-        0,
-        rows[:, :, None],
-        cols[:, None, :],
-    ]
-    return picked[:, None]
+    index = torch.arange(b, device=dev)[:, None, None]
+    return out[index, 0, rows[:, :, None], cols[:, None, :]][:, None]
