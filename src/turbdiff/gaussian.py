@@ -21,7 +21,7 @@ class GaussianDenoiser(nn.Module):
 
     def forward(self, x: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
         lam = self.lam.to(x.device)
-        ab = self.bars[t[0]].item()
+        ab = self.bars[int(t[0])].item()
         gain = (1 - ab) ** 0.5 / (ab * lam + 1 - ab)
         spec = torch.fft.fft2(x.double(), norm="ortho") * gain
         return torch.fft.ifft2(spec, norm="ortho").real.to(x.dtype)
