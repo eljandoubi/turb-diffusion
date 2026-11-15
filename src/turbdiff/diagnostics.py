@@ -3,6 +3,8 @@
 import numpy as np
 import torch
 
+from turbdiff.data import symmetry_cosets
+
 SEPARATIONS = (1, 2, 4, 8, 16)
 ORDERS = (2, 4)
 
@@ -77,21 +79,22 @@ def nearest_distance(
     """Rms pixel distance from each field to its nearest training field.
 
     The first result compares the fields as they are, the second also allows
-    the shifts under which the flow statistics are invariant (any shift along x,
-    shifts along y by multiples of period_y).
+    every symmetry of the flow (see turbdiff.data): shifts along x, shifts along
+    y by multiples of period_y, the half turn and the shifted reflection.
     """
     n = fields.shape[-1]
     a, b = fields.float(), train.to(fields.device).float()
     na, nb = a.pow(2).mean(dim=(-2, -1)), b.pow(2).mean(dim=(-2, -1))
     plain = a.reshape(len(a), -1) @ b.reshape(len(b), -1).T / n**2
-    shifted = []
-    bf = torch.fft.rfft2(b).conj()[None]
-    for i in range(0, len(a), chunk):
-        corr = torch.fft.irfft2(
-            torch.fft.rfft2(a[i : i + chunk])[:, None] * bf, s=(n, n)
-        )
-        shifted.append(corr[..., ::period_y, :].amax(dim=(-2, -1)) / n**2)
-    shifted = torch.cat(shifted)
+    shifted = torch.full_like(plain, -torch.inf)
+    for fn in symmetry_cosets(period_y):
+        bf = torch.fft.rfft2(fn(b)).conj()[None]
+        for i in range(0, len(a), chunk):
+            corr = torch.fft.irfft2(
+                torch.fft.rfft2(a[i : i + chunk])[:, None] * bf, s=(n, n)
+            )
+            best = corr[..., ::period_y, :].amax(dim=(-2, -1)) / n**2
+            shifted[i : i + chunk] = torch.maximum(shifted[i : i + chunk], best)
     out = []
     for inner in (plain, shifted):
         d2 = na[:, None] + nb[None, :] - 2 * inner

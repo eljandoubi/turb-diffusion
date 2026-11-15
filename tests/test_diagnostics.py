@@ -4,6 +4,7 @@ import pytest
 import torch
 
 from turbdiff import diagnostics as dg
+from turbdiff.data import half_turn, shift_reflect
 from turbdiff.solver import grid
 
 
@@ -60,7 +61,7 @@ def test_forced_mode_coherence_with_fixed_and_random_phase():
     assert dg.forced_mode_coherence(torch.cos(4 * y[None] + phases), 4) < 0.15
 
 
-def test_nearest_distance_sees_copies_up_to_the_allowed_shifts():
+def test_nearest_distance_sees_copies_up_to_the_symmetries():
     g = torch.Generator().manual_seed(5)
     train = torch.randn(20, 32, 32, generator=g)
     queries = torch.stack(
@@ -69,6 +70,8 @@ def test_nearest_distance_sees_copies_up_to_the_allowed_shifts():
             torch.roll(train[7], (8, 5), dims=(-2, -1)),
             torch.roll(train[9], (1, 0), dims=(-2, -1)),
             torch.randn(32, 32, generator=g),
+            torch.roll(half_turn(train[11]), (16, 3), dims=(-2, -1)),
+            shift_reflect(train[13], 4),
         ]
     )
     plain, shifted = dg.nearest_distance(queries, train, period_y=8)
@@ -76,4 +79,6 @@ def test_nearest_distance_sees_copies_up_to_the_allowed_shifts():
     assert plain[1] > 0.5 and shifted[1] < 1e-3
     assert shifted[2] > 0.5
     assert shifted[3] > 0.5
+    assert plain[4] > 0.5 and shifted[4] < 1e-3
+    assert plain[5] > 0.5 and shifted[5] < 1e-3
     assert (shifted <= plain + 1e-6).all()
