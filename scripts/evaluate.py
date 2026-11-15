@@ -15,7 +15,7 @@ import torch
 from turbdiff import diagnostics as dg
 from turbdiff import spectra
 from turbdiff.data import load, merge_json
-from turbdiff.diffusion import Schedule, ddim_sample
+from turbdiff.diffusion import Schedule, sample_batches
 from turbdiff.gaussian import GaussianDenoiser, GaussianField
 from turbdiff.solver import Params, Solver
 from turbdiff.unet import UNet
@@ -24,14 +24,9 @@ ROOT = Path(__file__).resolve().parents[1]
 PARAMS = Params()
 
 
-def sample_chain(model, sched, count, n, sigma, device, steps, seed, chunk=100):
+def sample_chain(model, sched, count, n, sigma, device, steps, seed):
     """DDIM samples in physical units from a noise predictor."""
-    g = torch.Generator(device=device).manual_seed(seed)
-    out = []
-    for i in range(0, count, chunk):
-        shape = (min(chunk, count - i), 1, n, n)
-        out.append(ddim_sample(model, sched, shape, g, steps=steps))
-    return torch.cat(out)[:, 0].cpu().double() * sigma
+    return sample_batches(model, sched, count, n, device, steps, seed) * sigma
 
 
 def describe(x, real, train, ref, device, in_train=False):

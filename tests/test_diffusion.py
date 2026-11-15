@@ -1,4 +1,5 @@
 import torch
+from torch import nn
 
 from turbdiff import spectra
 from turbdiff.diffusion import (
@@ -7,10 +8,42 @@ from turbdiff.diffusion import (
     alpha_bar,
     ddim_sample,
     noisy,
+    start_index,
     training_loss,
 )
 from turbdiff.gaussian import GaussianDenoiser, GaussianField
 from turbdiff.unet import UNet
+
+
+class AllNoise(nn.Module):
+    """Predicts that the input is pure noise, with a one percent gain error."""
+
+    def __init__(self, sched):
+        super().__init__()
+        self.bars = sched.alphas_bar
+
+    def forward(self, x, t):
+        return 1.01 * x / (1 - self.bars[int(t[0])].item()) ** 0.5
+
+
+def test_start_index_follows_the_signal_level():
+    sched = Schedule()
+    assert start_index(sched, 0.0) == sched.steps - 1
+    for level in (1e-6, 1e-3, 0.5):
+        t = start_index(sched, level)
+        assert sched.alphas_bar[t] >= level > sched.alphas_bar[t + 1]
+
+
+def test_a_late_start_keeps_the_chain_stable_under_a_small_gain_error():
+    sched = Schedule()
+    rms = {}
+    for level in (1e-3, 0.0):
+        g = torch.Generator().manual_seed(0)
+        shape = (4, 1, 16, 16)
+        out = ddim_sample(AllNoise(sched), sched, shape, g, 20, min_alpha_bar=level)
+        rms[level] = out.pow(2).mean().sqrt().item()
+    assert rms[1e-3] < 3.0
+    assert rms[0.0] > 3 * rms[1e-3]
 
 
 def test_cosine_schedule_starts_at_one_and_decreases():

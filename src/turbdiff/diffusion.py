@@ -42,6 +42,11 @@ def training_loss(model: nn.Module, sched: Schedule, x0: torch.Tensor) -> torch.
     return F.mse_loss(pred.float(), noise)
 
 
+def start_index(sched: Schedule, min_alpha_bar: float) -> int:
+    """Largest timestep whose signal level alpha_bar is at least min_alpha_bar."""
+    return int((sched.alphas_bar >= min_alpha_bar).nonzero().max())
+
+
 @torch.no_grad()
 def ddim_sample(
     model: nn.Module,
@@ -51,8 +56,14 @@ def ddim_sample(
     steps: int = 50,
     known: tuple[torch.Tensor, torch.Tensor] | None = None,
     fresh_noise: bool = True,
+    min_alpha_bar: float = 1e-3,
 ) -> torch.Tensor:
     """Deterministic DDIM (eta = 0) from Gaussian noise.
+
+    The chain starts at the last timestep with alpha_bar >= min_alpha_bar. At
+    the end of the cosine schedule alpha_bar is 2e-9, and the clean estimate
+    (x - sqrt(1 - ab) eps) / sqrt(ab) multiplies the error of the noise
+    prediction by 2e4, which ruins the whole chain.
 
     known is an optional (mask, values) pair for conditioning by replacement:
     after every step the masked pixels are reset to the observed values noised
@@ -60,7 +71,8 @@ def ddim_sample(
     """
     device = generator.device
     x = torch.randn(shape, generator=generator, device=device)
-    ts = torch.linspace(sched.steps - 1, 0, steps).round().long()
+    first = start_index(sched, min_alpha_bar)
+    ts = torch.linspace(first, 0, steps).round().long()
     bars = sched.alphas_bar
     for i, t in enumerate(ts.tolist()):
         ab = bars[t].item()
@@ -76,6 +88,26 @@ def ddim_sample(
             pinned = math.sqrt(ab_next) * values + math.sqrt(1 - ab_next) * level
             x = torch.where(mask, pinned, x)
     return x
+
+
+def sample_batches(
+    model: nn.Module,
+    sched: Schedule,
+    count: int,
+    n: int,
+    device: str,
+    steps: int,
+    seed: int,
+    chunk: int = 100,
+    **kwargs,
+) -> torch.Tensor:
+    """DDIM samples of shape (count, n, n) in the units of the model input."""
+    g = torch.Generator(device=device).manual_seed(seed)
+    out = []
+    for i in range(0, count, chunk):
+        shape = (min(chunk, count - i), 1, n, n)
+        out.append(ddim_sample(model, sched, shape, g, steps=steps, **kwargs))
+    return torch.cat(out)[:, 0].cpu().double()
 
 
 class EMA:
