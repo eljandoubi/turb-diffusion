@@ -19,7 +19,7 @@ class Params:
     """Flow and discretisation parameters."""
 
     n: int = 64
-    nu: float = 1e-3
+    nu: float = 2e-3
     mu: float = 0.1
     amp: float = 1.0
     kf: int = 4
