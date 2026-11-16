@@ -211,21 +211,27 @@ three seeds).
 
 ### Sampler and network variants
 
-| set | E(k) all | enstrophy mean | S4 | coherence | relaxation |
-|---|---|---|---|---|---|
-| G mode, DDIM oracle | 0.126 | 1.59 | 0.494 | 0.0423 | 0.22 |
-| G mode, DDIM oracle 250 | 0.065 | 1.74 | 0.343 | 0.0423 | 0.21 |
-| diffusion, forcing channel | 0.439 | 1.46 | 0.662 | 0.974 | 0.0262 |
-| diffusion, forcing channel, DDIM 250 | 0.356 | 1.53 | 0.544 | 0.971 | 0.0241 |
-| diffusion, forcing channel, early checkpoint | 0.447 | 1.32 | 0.677 | 0.949 | 0.0733 |
-| diffusion, no forcing channel | 0.428 | 1.49 | 0.64 | 0.0393 | 0.0362 |
+| set | E(k) low | E(k) mid | E(k) high | E(k) all | enstrophy mean | S4 | excess kurtosis | KS distance | share outside k=21 | coherence | relaxation |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| real held-out | 0 | 0 | 0 | 0 | 2.03 | 0 | 0.133 | 0 | 4.2e-16 | 0.966 | 0.000956 |
+| G mode, DDIM oracle | 0.221 | 0.0872 | 0.113 | 0.126 | 1.59 | 0.494 | -0.00577 | 0.027 | 8.24e-16 | 0.0423 | 0.22 |
+| G mode, DDIM oracle 250 | 0.152 | 0.0391 | 0.0474 | 0.065 | 1.74 | 0.343 | -0.00528 | 0.0193 | 8.26e-16 | 0.0423 | 0.21 |
+| diffusion, forcing channel | 0.331 | 0.303 | 0.552 | 0.439 | 1.46 | 0.662 | 0.371 | 0.0432 | 0.00025 | 0.974 | 0.0262 |
+| diffusion, forcing channel, DDIM 250 | 0.304 | 0.237 | 0.44 | 0.356 | 1.53 | 0.544 | 0.33 | 0.0368 | 0.000242 | 0.971 | 0.0241 |
+| diffusion, forcing channel, early checkpoint | 0.417 | 0.448 | 0.458 | 0.447 | 1.32 | 0.677 | 0.715 | 0.0577 | 0.0503 | 0.949 | 0.0733 |
+| diffusion, no forcing channel | 0.292 | 0.308 | 0.542 | 0.428 | 1.49 | 0.64 | 0.331 | 0.0398 | 0.000237 | 0.0393 | 0.0362 |
 
 DDIM with 250 steps lowers the spectrum and S4 errors of the network with the channel (0.44 to
-0.36 and 0.66 to 0.54) and the same happens for the Gaussian oracle (0.126 to 0.065). In this
-run the early checkpoint (step 1000) has about the same spectrum error as the final one (0.45
-against 0.44) but lower enstrophy (1.32 against 1.46) and a larger drift under the solver (0.073
-against 0.026): training longer helped the amplitude and the consistency more than the shape
-of the spectrum.
+0.36 and 0.66 to 0.54) and the same happens for the Gaussian oracle (0.126 to 0.065). The early
+checkpoint (step 1000) has about the same E(k) error as the final one over shells 1 to 21 (0.447
+against 0.439), but the error lies in other places: its low and mid bands are worse (0.417 and
+0.448 against 0.331 and 0.303) and its high band is better (0.458 against 0.552). It also holds
+0.0503 of the mean square beyond the solver cutoff (final 0.00025), has a larger excess kurtosis
+(0.715 against 0.371, real fields 0.133) and KS distance (0.0577 against 0.0432), a lower
+enstrophy (1.32 against 1.46), a lower forced-mode coherence (0.949 against 0.974) and a larger
+drift under the solver (0.0733 against 0.0262). Training longer improved the amplitude, the
+tails, the energy beyond the cutoff and the consistency; the high band is the one place where
+step 1000 is closer to the real spectrum, and the E(k) error over all shells does not show it.
 
 The start of the DDIM chain matters. The cosine schedule ends at a signal level of 2.4e-9, and a
 chain that starts there gives fields with a mean enstrophy about 5e4 times that of the

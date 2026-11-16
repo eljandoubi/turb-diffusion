@@ -20,6 +20,7 @@ SOURCES = [
     "diffusion_plain",
 ]
 STEP_SOURCES = [
+    "real_test",
     "g_mode_ddim",
     "g_mode_ddim_long",
     "diffusion",
@@ -215,14 +216,30 @@ def steps_table(diag: dict, cons: dict) -> str:
         rows.append(
             [
                 titles(diag["setup"])[s].replace("long", str(steps)),
-                g(d["band_log_ratio"]["all"]),
+                *[g(d["band_log_ratio"][b]) for b in ("low", "mid", "high", "all")],
                 g(d["enstrophy_mean"]),
                 g(d["structure_log_ratio"]["S4"]),
+                g(d["excess_kurtosis"]),
+                g(d["ks_distance"]),
+                g(d["mean_square_outside_cutoff"]),
                 g(d["forced_mode_coherence"]),
                 g(c["band_log_ratio"]["all"]),
             ]
         )
-    header = ["set", "E(k) all", "enstrophy mean", "S4", "coherence", "relaxation"]
+    header = [
+        "set",
+        "E(k) low",
+        "E(k) mid",
+        "E(k) high",
+        "E(k) all",
+        "enstrophy mean",
+        "S4",
+        "excess kurtosis",
+        "KS distance",
+        "share outside k=21",
+        "coherence",
+        "relaxation",
+    ]
     return table(header, rows)
 
 

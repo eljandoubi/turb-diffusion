@@ -98,3 +98,15 @@ def test_the_start_used_gives_the_highest_validation_error(report):
         }
         assert max(errors, key=errors.get) == used
         assert min(errors, key=errors.get) == "1e-06"
+
+
+def test_early_checkpoint_is_better_only_in_the_high_band(report):
+    sources = json.loads((ROOT / "results" / "diagnostics.json").read_text())["sources"]
+    early, final = sources["diffusion_early"], sources["diffusion"]
+    assert early["band_log_ratio"]["high"] < final["band_log_ratio"]["high"]
+    for band in ("low", "mid"):
+        assert early["band_log_ratio"][band] > final["band_log_ratio"][band]
+    for key in ("excess_kurtosis", "ks_distance", "mean_square_outside_cutoff"):
+        assert early[key] > final[key]
+    assert early["forced_mode_coherence"] < final["forced_mode_coherence"]
+    assert early["enstrophy_mean"] < final["enstrophy_mean"]
