@@ -387,34 +387,44 @@ python scripts/check_solver.py       # adds the checks to results/solver.json
 ```
 
 Training, evaluation and the reconstruction experiment ran on a Colab T4 with the
-`data/turb.npz` made on the laptop. The first block is the network without the
-forcing channel, the second the network with it, the third a second seed of that network:
+`data/turb.npz` made on the laptop. Every network writes into its own results folder, so no
+command overwrites the files of another. The first block is the network without the forcing
+channel, the second the network with it (its evaluation also samples the first network, through
+`--plain`), the third a second seed of that network:
 
 ```
-python scripts/train.py --steps 6000 --compile
-python scripts/sampler_start.py
-python scripts/evaluate.py --early work/ema_1000.pt
-python scripts/reconstruct.py
-cp results/reconstruction.json results/reconstruction_plain.json
+python scripts/train.py --steps 6000 --compile --results results_plain
+python scripts/sampler_start.py --results results_plain
+python scripts/reconstruct.py --results results_plain
 
-python scripts/train.py --steps 6000 --compile --forcing --tag _forcing --work work_forcing
-python scripts/sampler_start.py --forcing --work work_forcing
-python scripts/evaluate.py --forcing --work work_forcing --early work_forcing/ema_1000.pt --plain work/ema.pt
-python scripts/reconstruct.py --forcing --work work_forcing
+mkdir -p results_forcing results_seed1
+cp results/solver.json results_forcing/ && cp results/solver.json results_seed1/
+python scripts/train.py --steps 6000 --compile --forcing --tag _forcing --work work_forcing --results results_forcing
+python scripts/sampler_start.py --forcing --work work_forcing --results results_forcing
+python scripts/evaluate.py --forcing --work work_forcing --early work_forcing/ema_1000.pt --plain work/ema.pt --results results_forcing
+python scripts/reconstruct.py --forcing --work work_forcing --results results_forcing
 
 python scripts/train.py --steps 6000 --compile --forcing --seed 1 --tag _forcing_seed1 --work work_seed1 --results results_seed1
 python scripts/evaluate.py --forcing --work work_seed1 --results results_seed1
 python scripts/reconstruct.py --forcing --work work_seed1 --results results_seed1
+```
 
+The files then go to the names that `scripts/figures.py` and `scripts/report.py` read:
+
+```
+cp results_plain/train.json results_plain/train_log.csv results_plain/sampler_start.json results/
+cp results_plain/reconstruction.json results/reconstruction_plain.json
+cp results_forcing/* results/
+cp results_seed1/train_forcing_seed1.json results_seed1/train_log_forcing_seed1.csv results/
+cp results_seed1/diagnostics.json results/diagnostics_forcing_seed1.json
+cp results_seed1/consistency.json results/consistency_forcing_seed1.json
+cp results_seed1/reconstruction.json results/reconstruction_forcing_seed1.json
 python scripts/figures.py && python scripts/report.py
 ```
 
-The runs behind `results/` wrote the networks to separate result folders, which were then
-merged by copying the files to the names above. For the second seed the folder needs a copy of
-`results/solver.json`, and its `diagnostics.json`, `consistency.json` and `reconstruction.json`
-are the files `results/diagnostics_forcing_seed1.json`, `results/consistency_forcing_seed1.json`
-and `results/reconstruction_forcing_seed1.json`. Training takes about 20 to 22 minutes per
-network, the evaluation 6 to 8 minutes and the reconstruction about 3 minutes on the T4.
+The evaluation of the first network alone (without `--plain`) is not part of the tables. Training
+takes about 20 to 22 minutes per network, the evaluation 6 to 8 minutes and the reconstruction
+about 3 minutes on the T4.
 
 ## Method notes
 
