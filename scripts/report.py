@@ -9,7 +9,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "results"
-SOURCES = ["real_test", "real_train", "g_shell", "g_mode", "g_mode_ddim", "diffusion"]
+SOURCES = [
+    "real_test",
+    "real_train",
+    "g_shell",
+    "g_mode",
+    "g_mode_ddim",
+    "diffusion",
+    "diffusion_plain",
+]
 STEP_SOURCES = [
     "g_mode_ddim",
     "g_mode_ddim_long",
@@ -30,6 +38,15 @@ TITLES = {
     "diffusion_early": "diffusion, early checkpoint",
     "diffusion_plain": "diffusion, no forcing channel",
 }
+
+
+def titles(setup: dict) -> dict[str, str]:
+    """Column titles, with the main diffusion network named after its input."""
+    out = dict(TITLES)
+    if setup.get("forcing_channel"):
+        for key in ("diffusion", "diffusion_long", "diffusion_early"):
+            out[key] = out[key].replace("diffusion", "diffusion, forcing channel", 1)
+    return out
 
 
 def g(x: float, digits: int = 3) -> str:
@@ -137,7 +154,7 @@ def diagnostics_table(diag: dict) -> str:
                 for s in names
             ]
         )
-    return table(["metric"] + [TITLES[s] for s in names], rows)
+    return table(["metric"] + [titles(diag["setup"])[s] for s in names], rows)
 
 
 def consistency_table(cons: dict) -> str:
@@ -147,7 +164,7 @@ def consistency_table(cons: dict) -> str:
     for s in names:
         c = src[s]
         rows.append(
-            [TITLES[s]]
+            [titles(cons["setup"])[s]]
             + [g(c["band_log_ratio"][b]) for b in ("low", "mid", "high", "all")]
             + [g(c["enstrophy_relative_change"]), g(c["energy_relative_change"])]
         )
@@ -184,7 +201,7 @@ def steps_table(diag: dict, cons: dict) -> str:
         steps = diag["setup"]["long_ddim_steps" if s.endswith("long") else "ddim_steps"]
         rows.append(
             [
-                TITLES[s].replace("long", str(steps)),
+                titles(diag["setup"])[s].replace("long", str(steps)),
                 g(d["band_log_ratio"]["all"]),
                 g(d["enstrophy_mean"]),
                 g(d["structure_log_ratio"]["S4"]),
@@ -255,11 +272,7 @@ def main() -> None:
         ("Diagnostics", "diagnostics.json", diagnostics_table),
         ("Consistency", "consistency.json", consistency_table),
         ("Reconstruction", "reconstruction.json", reconstruction_table),
-        (
-            "Reconstruction, no forcing channel",
-            "reconstruction_plain.json",
-            reconstruction_table,
-        ),
+        ("Reconstruction", "reconstruction_plain.json", reconstruction_table),
         ("Sampler start, no forcing channel", "sampler_start.json", start_table),
         (
             "Sampler start, forcing channel",
@@ -269,8 +282,15 @@ def main() -> None:
     ):
         path = RESULTS / name
         if path.exists():
+            data = json.loads(path.read_text())
+            if fn is reconstruction_table:
+                title += ", " + (
+                    "forcing channel"
+                    if data["setup"].get("forcing_channel")
+                    else "no forcing channel"
+                )
             print(f"### {title}\n")
-            print(fn(json.loads(path.read_text())))
+            print(fn(data))
             print()
     both = (RESULTS / "diagnostics.json", RESULTS / "consistency.json")
     if all(p.exists() for p in both):
