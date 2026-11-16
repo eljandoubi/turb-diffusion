@@ -66,8 +66,9 @@ def structure_error(sf: dict, ref: dict) -> dict[str, float]:
 def forced_mode_coherence(x: torch.Tensor, kf: int) -> float:
     """|mean| over fields of the forced Fourier mode divided by its rms.
 
-    It is 1 when every field carries the same phase of the forcing and near 0
-    when the phase is random.
+    It is 1 when every field has the same complex coefficient, below 1 when only
+    the phase is shared and the amplitude varies, and near 0 when the phase is
+    random. It measures phase and amplitude together.
     """
     coeff = torch.fft.fft2(x.double(), norm="forward")[:, kf, 0]
     return (coeff.mean().abs() / coeff.abs().pow(2).mean().sqrt()).item()

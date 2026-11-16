@@ -459,7 +459,7 @@ table shows the effect of starting there.
 $\cos(k_f y)$, the pattern of the forcing. Without it the UNet commutes with shifts by
 multiples of its total stride (8 pixels, a divisor of the forcing period of 16), so nothing
 ties the phase of a generated flow to the forcing. The forced-mode coherence in the diagnostics
-table measures that phase.
+table measures that phase, together with the amplitude of the forced mode.
 
 **Diagnostics.** E(k) is the shell-summed kinetic energy spectrum (shell round(|k|), k = 1 to
 32). "E(k) mean abs log ratio" is the mean over the shells of a band of $|\log(E/E_\mathrm{ref})|$
@@ -469,10 +469,11 @@ kurtosis and the Kolmogorov-Smirnov distance use the values pooled over fields.
 S2 and S4 are the second and fourth moments of $|\omega(x + r) - \omega(x)|$ for
 r = 1, 2, 4, 8, 16 along x and y, compared as the mean of $|\log(S/S_\mathrm{ref})|$.
 Forced-mode coherence is the modulus of the mean over fields of the Fourier coefficient of
-the forced mode divided by its root mean square: 1 when every field has the same phase,
-near 0 for random phases. The nearest-neighbour rows give the rms pixel distance from each
-field to the closest of the 2000 training fields, as it is (plain) and with the best of all
-symmetries of the flow (shifted).
+the forced mode divided by its root mean square: 1 when every field has the same coefficient
+(the same phase and the same amplitude), below 1 when only the phase is shared and the amplitude
+varies, near 0 for random phases. It measures phase and amplitude together. The nearest-neighbour
+rows give the rms pixel distance from each field to the closest of the 2000 training fields, as
+it is (plain) and with the best of all symmetries of the flow (shifted).
 
 **Solver consistency.** Each set of fields is evolved by the solver for one snapshot spacing
 (0.495) and the mean spectrum before and after is compared in the same way. Real fields change

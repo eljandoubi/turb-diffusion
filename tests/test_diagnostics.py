@@ -61,6 +61,15 @@ def test_forced_mode_coherence_with_fixed_and_random_phase():
     assert dg.forced_mode_coherence(torch.cos(4 * y[None] + phases), 4) < 0.15
 
 
+def test_forced_mode_coherence_is_below_one_when_only_the_phase_is_shared():
+    y, _ = grid(64)
+    amplitude = torch.tensor([1.0, 2.0, 3.0, 4.0], dtype=torch.float64)[:, None, None]
+    expected = amplitude.mean() / amplitude.pow(2).mean().sqrt()
+    fields = amplitude * torch.cos(4 * y)[None]
+    assert dg.forced_mode_coherence(fields, 4) == pytest.approx(expected.item())
+    assert expected.item() < 0.92
+
+
 def test_nearest_distance_sees_copies_up_to_the_symmetries():
     g = torch.Generator().manual_seed(5)
     train = torch.randn(20, 32, 32, generator=g)
