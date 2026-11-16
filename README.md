@@ -86,6 +86,15 @@ the exact denoiser with 50 steps (gray dashed) is below the real spectrum as wel
 error belongs to the sampler. The networks also put a small share of the mean square (2.4e-4 and
 2.5e-4) beyond the cutoff of the solver, where the real fields have none.
 
+### Example fields
+
+![Example fields of the held-out set, the Gaussian field and the two networks](results/fields.png)
+
+Rows: held-out solver fields, the Gaussian field with the per-mode spectrum, the network with
+the forcing channel and the network without it. The columns are independent samples, not
+matched pairs. The Gaussian fields have the spectrum of the real ones but not their vortex
+structure, and the generated fields have weaker small scales, as the spectrum ratio shows.
+
 ### Diagnostics
 
 | metric | real held-out | real train | G shell | G mode | G mode, DDIM oracle | diffusion, forcing channel | diffusion, no forcing channel |
