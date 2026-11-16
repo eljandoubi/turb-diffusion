@@ -1,0 +1,50 @@
+{
+  "setup": {
+    "samples": 100,
+    "ddim_steps": 50,
+    "reference": "validation",
+    "forcing_channel": true
+  },
+  "start": {
+    "0.0": {
+      "start_timestep": 999,
+      "first_clean_estimate_rms": 276.78179931640625,
+      "enstrophy_over_validation": 48154.27562371179,
+      "mean_square_outside_cutoff": 0.3106664195985379,
+      "band_log_ratio_all": 11.68342664169924,
+      "max_abs_value": 1495.435546875
+    },
+    "1e-06": {
+      "start_timestep": 998,
+      "first_clean_estimate_rms": 7.824244022369385,
+      "enstrophy_over_validation": 1.477778557079355,
+      "mean_square_outside_cutoff": 0.009952562269421176,
+      "band_log_ratio_all": 0.20780677126483757,
+      "max_abs_value": 12.911667823791504
+    },
+    "0.0001": {
+      "start_timestep": 992,
+      "first_clean_estimate_rms": 1.0699381828308105,
+      "enstrophy_over_validation": 0.7898089382726612,
+      "mean_square_outside_cutoff": 0.0006414051302867418,
+      "band_log_ratio_all": 0.3275722679665957,
+      "max_abs_value": 4.123029708862305
+    },
+    "0.001": {
+      "start_timestep": 978,
+      "first_clean_estimate_rms": 0.5028154253959656,
+      "enstrophy_over_validation": 0.7334398413659072,
+      "mean_square_outside_cutoff": 0.00025154715172851286,
+      "band_log_ratio_all": 0.3746785920251172,
+      "max_abs_value": 3.7766542434692383
+    },
+    "0.01": {
+      "start_timestep": 934,
+      "first_clean_estimate_rms": 0.5293933749198914,
+      "enstrophy_over_validation": 0.6262739179614056,
+      "mean_square_outside_cutoff": 0.0003038065514720269,
+      "band_log_ratio_all": 0.3582083093431127,
+      "max_abs_value": 3.418353796005249
+    }
+  }
+}

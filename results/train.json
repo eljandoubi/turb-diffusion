@@ -1,0 +1,23 @@
+{
+  "device": "Tesla T4",
+  "fp16_autocast": true,
+  "parameters": 3566977,
+  "base_channels": 48,
+  "forcing_channel": false,
+  "dropout": 0.1,
+  "weight_decay": 0.01,
+  "torch_compile": true,
+  "steps": 6000,
+  "batch": 64,
+  "lr": 0.0003,
+  "warmup": 500,
+  "ema_decay": 0.999,
+  "training_fields": 2000,
+  "wall_clock_seconds": 1318.1302363872528,
+  "steps_per_second": 4.5519022584937225,
+  "final_train_loss": 0.06894418007135392,
+  "final_val_loss_ema": 0.07087065279483795,
+  "selected_step": 5750,
+  "selected_val_loss_ema": 0.07086964696645737,
+  "seed": 0
+}
