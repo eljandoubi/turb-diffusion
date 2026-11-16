@@ -1,10 +1,14 @@
 """The tables and lists of the README are the ones scripts/report.py prints."""
 
 import importlib.util
+import inspect
+import json
 import sys
 from pathlib import Path
 
 import pytest
+
+from turbdiff.diffusion import ddim_sample
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -70,3 +74,27 @@ def test_crossing_lines_of_the_committed_runs(report):
     assert lines[2].endswith(
         "up to step 3750, except at steps 2750, 3250, 3500, below it from step 4000 on."
     )
+
+
+def start_with(errors, forcing=False):
+    rows = {k: {"band_log_ratio_all": e} for k, e in errors.items()}
+    return {"setup": {"forcing_channel": forcing}, "start": rows}
+
+
+def test_start_summary_leaves_out_the_start_that_blows_up(report):
+    errors = {"0.0": 11.0, "1e-06": 0.2, "0.001": 0.5, "0.01": 0.4}
+    lines = report.start_summary([start_with(errors)]).splitlines()
+    assert lines[2] == "| no forcing channel | 0.2 | 1e-06 | 0.5 | 0.001 | 0.3 |"
+
+
+def test_the_start_used_gives_the_highest_validation_error(report):
+    used = str(inspect.signature(ddim_sample).parameters["min_alpha_bar"].default)
+    for name in ("sampler_start.json", "sampler_start_forcing.json"):
+        start = json.loads((ROOT / "results" / name).read_text())["start"]
+        errors = {
+            level: s["band_log_ratio_all"]
+            for level, s in start.items()
+            if level != report.END_OF_SCHEDULE
+        }
+        assert max(errors, key=errors.get) == used
+        assert min(errors, key=errors.get) == "1e-06"

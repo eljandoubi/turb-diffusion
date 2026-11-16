@@ -39,6 +39,7 @@ TITLES = {
     "diffusion_early": "diffusion, early checkpoint",
     "diffusion_plain": "diffusion, no forcing channel",
 }
+END_OF_SCHEDULE = "0.0"
 
 
 def titles(setup: dict) -> dict[str, str]:
@@ -236,6 +237,7 @@ def start_table(start: dict) -> str:
                 g(s["enstrophy_over_validation"]),
                 g(s["mean_square_outside_cutoff"]),
                 g(s["band_log_ratio_all"]),
+                g(s["max_abs_value"]),
             ]
         )
     header = [
@@ -245,6 +247,40 @@ def start_table(start: dict) -> str:
         "enstrophy / validation",
         "share of mean square outside k=21",
         "E(k) all",
+        "largest absolute value",
+    ]
+    return table(header, rows)
+
+
+def start_summary(starts: list[dict]) -> str:
+    """E(k) error on validation over the starts that do not blow up."""
+    rows = []
+    for start in starts:
+        error = {
+            level: s["band_log_ratio_all"]
+            for level, s in start["start"].items()
+            if level != END_OF_SCHEDULE
+        }
+        low, high = min(error, key=error.get), max(error, key=error.get)
+        rows.append(
+            [
+                "forcing channel"
+                if start["setup"]["forcing_channel"]
+                else "no forcing channel",
+                g(error[low]),
+                low,
+                g(error[high]),
+                high,
+                g(error[high] - error[low]),
+            ]
+        )
+    header = [
+        "network",
+        "lowest E(k) all",
+        "at alpha_bar",
+        "highest E(k) all",
+        "at alpha_bar",
+        "range",
     ]
     return table(header, rows)
 
@@ -414,6 +450,11 @@ def main() -> None:
             print(f"### {title}\n")
             print(fn(data))
             print()
+    starts = [read("sampler_start.json"), read("sampler_start_forcing.json")]
+    if all(starts):
+        print("### Sampler start, range of the E(k) error\n")
+        print(start_summary([s for s in starts if s]))
+        print()
     both = (RESULTS / "diagnostics.json", RESULTS / "consistency.json")
     if all(p.exists() for p in both):
         print("### Sampler and network variants\n")

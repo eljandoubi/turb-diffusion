@@ -19,7 +19,10 @@ spectrum of the training set. A second experiment reconstructs a field from its 
   the shell field, against 0.039 between two sets of real fields). The diffusion model does not:
   its E(k) error is 0.44 with the forcing channel and 0.43 without, its mean enstrophy is 1.46 and
   1.49 against 2.03 for held-out fields, and its spectrum lies below the real one at every shell
-  except k = 2.
+  except k = 2. All diffusion rows start the DDIM chain at one signal level (1e-3), and the E(k)
+  error depends on it: on the validation trajectory the level used gives the highest error of the
+  four starts that do not blow up, 0.15 to 0.17 above the lowest. The test-set error was computed
+  only for the level used.
 - **Where it does not, the diffusion model is closer to the real fields.** The flatness of
   vorticity increments at the smallest separation is 4.1 for both networks, 4.46 for held-out
   fields and 3.0 to 3.1 for the Gaussian fields. After one eddy turnover time in the solver the
@@ -226,25 +229,49 @@ of the spectrum.
 
 The start of the DDIM chain matters. The cosine schedule ends at a signal level of 2.4e-9, and a
 chain that starts there gives fields with a mean enstrophy about 5e4 times that of the
-validation fields. Starting at the last step with a signal level of at least 1e-3 (timestep
-978) is the setting used everywhere above. The tables compare the start levels on the validation
-trajectory, first for the network without the forcing channel and then for the one with it:
+validation fields. Every diffusion row of this README starts the chain at the last timestep with
+a signal level of at least 1e-3 (timestep 978). The tables compare five starts on the validation
+trajectory (100 samples, 50 DDIM steps, one sampler seed), first for the network without the
+forcing channel and then for the one with it. The fields are in units of the training standard
+deviation (1.98), which is also the unit of the first clean estimate and of the largest value.
+The validation errors are not comparable with the test-set errors of the other tables (100
+against 500 samples, another reference set).
 
-| alpha_bar at the start | start timestep | first clean estimate, rms | enstrophy / validation | share of mean square outside k=21 | E(k) all |
-|---|---|---|---|---|---|
-| 0.0 | 999 | 297 | 5.68e+04 | 0.323 | 11.7 |
-| 1e-06 | 998 | 8.29 | 1.67 | 0.00753 | 0.216 |
-| 0.0001 | 992 | 1.02 | 0.788 | 0.000815 | 0.307 |
-| 0.001 | 978 | 0.406 | 0.734 | 0.00025 | 0.368 |
-| 0.01 | 934 | 0.455 | 0.623 | 0.000332 | 0.319 |
+| alpha_bar at the start | start timestep | first clean estimate, rms | enstrophy / validation | share of mean square outside k=21 | E(k) all | largest absolute value |
+|---|---|---|---|---|---|---|
+| 0.0 | 999 | 297 | 5.68e+04 | 0.323 | 11.7 | 1.76e+03 |
+| 1e-06 | 998 | 8.29 | 1.67 | 0.00753 | 0.216 | 19.6 |
+| 0.0001 | 992 | 1.02 | 0.788 | 0.000815 | 0.307 | 4.22 |
+| 0.001 | 978 | 0.406 | 0.734 | 0.00025 | 0.368 | 3.54 |
+| 0.01 | 934 | 0.455 | 0.623 | 0.000332 | 0.319 | 3.32 |
 
-| alpha_bar at the start | start timestep | first clean estimate, rms | enstrophy / validation | share of mean square outside k=21 | E(k) all |
+| alpha_bar at the start | start timestep | first clean estimate, rms | enstrophy / validation | share of mean square outside k=21 | E(k) all | largest absolute value |
+|---|---|---|---|---|---|---|
+| 0.0 | 999 | 277 | 4.82e+04 | 0.311 | 11.7 | 1.5e+03 |
+| 1e-06 | 998 | 7.82 | 1.48 | 0.00995 | 0.208 | 12.9 |
+| 0.0001 | 992 | 1.07 | 0.79 | 0.000641 | 0.328 | 4.12 |
+| 0.001 | 978 | 0.503 | 0.733 | 0.000252 | 0.375 | 3.78 |
+| 0.01 | 934 | 0.529 | 0.626 | 0.000304 | 0.358 | 3.42 |
+
+The range of the validation E(k) error over the four starts that do not blow up (every row but
+the first):
+
+| network | lowest E(k) all | at alpha_bar | highest E(k) all | at alpha_bar | range |
 |---|---|---|---|---|---|
-| 0.0 | 999 | 277 | 4.82e+04 | 0.311 | 11.7 |
-| 1e-06 | 998 | 7.82 | 1.48 | 0.00995 | 0.208 |
-| 0.0001 | 992 | 1.07 | 0.79 | 0.000641 | 0.328 |
-| 0.001 | 978 | 0.503 | 0.733 | 0.000252 | 0.375 |
-| 0.01 | 934 | 0.529 | 0.626 | 0.000304 | 0.358 |
+| no forcing channel | 0.216 | 1e-06 | 0.368 | 0.001 | 0.152 |
+| forcing channel | 0.208 | 1e-06 | 0.375 | 0.001 | 0.167 |
+
+How 1e-3 became the setting. The first sampler code started at the last timestep. The commit
+"Start the DDIM chain at a usable signal level" (0e88ad5, 2026-11-15) made 1e-3 the default of the
+sampler and added `scripts/sampler_start.py` and a test with a synthetic noise predictor; the
+reason given in the code is the stability of the chain at the end of the schedule, not the
+spectrum. The result files behind the two tables above were committed the next day (a552c54), so
+the history does not show that 1e-3 was picked from them. They show that, for both networks, 1e-3
+gives the highest E(k) error of the four starts and the lowest share of mean square outside the
+cutoff (0.00025, against 0.0075 and 0.010 at 1e-6). The spectrum errors of the diffusion rows in
+this README are therefore a property of this start as well as of the networks: on validation a
+start at 1e-6 lowers the error by 0.15 to 0.17. The test-set error was computed only for the
+start used, not for the other starts.
 
 ### Networks and seeds
 
@@ -458,9 +485,12 @@ then over the three seeds (with their standard deviation).
 - The reconstruction by replacement is a simple scheme and did not beat Gaussian conditioning. A
   sampler that targets the posterior (or a network trained for the observation pattern) may do
   better; none was tried.
-- The DDIM start, the replacement variant and the checkpoint were chosen on the validation
-  trajectory, never on the test fields. The network and training settings were fixed once and
-  not searched.
+- The checkpoint and the replacement variant were chosen on the validation trajectory, never on
+  the test fields. The DDIM start (signal level 1e-3) was set as the sampler default before the
+  comparison on validation was committed, and it gives the highest validation spectrum error of
+  the four starts that do not blow up: the spectrum errors of the test set belong to this start,
+  and the test-set values for the other starts were not computed. The network and training
+  settings were fixed once and not searched.
 - The nearest-neighbour check looks for near copies. It does not rule out weaker forms of
   memorisation of 2000 strongly correlated training fields.
 - Timings come from one T4 session and include the compile time of the first steps.
