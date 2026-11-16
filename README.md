@@ -321,20 +321,22 @@ it once). The table sets the three runs side by side with the same samples and m
 | reconstruction L2, 5% of the points | 1.02 | 0.913 | 0.923 |
 | reconstruction L2, 10% of the points | 0.697 | 0.626 | 0.647 |
 
-- Same in both seeds of the channel network and different from the no-channel run by more than
-  the two seeds differ: the forced-mode coherence (0.974 and 0.971 against 0.039), the change of
-  energy and enstrophy in the solver (+0.6 and +1.8 percent, +0.6 and +1.9 percent, against -8.3
-  and -10 percent), the E(k) change (0.026 and 0.027 against 0.036) and the reconstruction L2 error
-  (1.12 and 1.12 against 1.24 at 1 percent of the points, 0.63 and 0.65 against 0.70 at 10 percent).
-- Not different, or by about as much as the two seeds differ: the E(k) error (0.439 and 0.432
-  against 0.428) and the validation noise error (0.0709 and 0.0707 against 0.0709).
-- Slightly worse with the channel in both seeds: the low band of the spectrum (0.33 and 0.34
+Two seeds give one difference and the network without the channel has one run, so these runs do
+not estimate the variation between runs. The lists say which way the numbers go and give no
+ratio to a gap between seeds.
+
+- Same direction in both seeds of the channel network, against the no-channel run: the
+  forced-mode coherence (0.974 and 0.971 against 0.039), the change of energy and enstrophy in
+  the solver (+0.6 and +1.8 percent, +0.6 and +1.9 percent, against -8.3 and -10 percent), the
+  E(k) change (0.026 and 0.027 against 0.036) and the reconstruction L2 error (1.12 and 1.12
+  against 1.24 at 1 percent of the points, 0.63 and 0.65 against 0.70 at 10 percent).
+- About the same in all three runs: the E(k) error (0.439 and 0.432 against 0.428) and the
+  validation noise error (0.0709 and 0.0707 against 0.0709).
+- Slightly higher with the channel in both seeds: the low band of the spectrum (0.33 and 0.34
   against 0.29), excess kurtosis (0.371 and 0.373 against 0.331) and the KS distance (0.043 and
-  0.044 against 0.040), where the gap between the two kinds of network is 7 to 8, about 20 and
-  3 to 4 times the gap between the seeds. S2 (0.33 and 0.34 against 0.31), S4 (0.66 and 0.68
-  against 0.64) and a lower mean enstrophy (1.46 and 1.44 against 1.49) differ by only one to
-  three times the gap between the seeds. The no-channel network has one run, so its own spread is
-  not known.
+  0.044 against 0.040). S2 (0.33 and 0.34 against 0.31), S4 (0.66 and 0.68 against 0.64) and the
+  mean enstrophy (1.46 and 1.44 against 1.49) also differ a little. Whether any of these gaps is
+  larger than the variation between runs is not known.
 
 ### Training
 
