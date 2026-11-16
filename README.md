@@ -15,8 +15,9 @@ spectrum of the training set. A second experiment reconstructs a field from its 
 ## Results in short
 
 - **Where the spectrum decides, the Gaussian field wins.** Its mean spectrum and enstrophy
-  match the held-out fields by construction (E(k) error 0.042 for the per-mode field and 0.044 for
-  the shell field, against 0.039 between two sets of real fields). The diffusion model does not:
+  follow the training set by construction and lie close to the held-out fields here (E(k) error
+  0.042 for the per-mode field and 0.044 for the shell field, against 0.039 between two sets of
+  real fields; enstrophy 1.97 and 1.98 against 2.03). The diffusion model does not:
   its E(k) error is 0.44 with the forcing channel and 0.43 without, its mean enstrophy is 1.46 and
   1.49 against 2.03 for held-out fields, and its spectrum lies below the real one at every shell
   except k = 2. All diffusion rows start the DDIM chain at one signal level (1e-3), and the E(k)
@@ -136,7 +137,8 @@ structure, and the generated fields have weaker small scales, as the spectrum ra
 ![Value distribution and flatness of increments](results/statistics.png)
 
 - The "real train" column is every fourth training field. It shows how far two sets of real
-  fields differ in each metric (0.039 for E(k) all), which is the floor for the other columns.
+  fields differ in each metric (0.039 for E(k) all), a reference discrepancy for the other
+  columns and not a floor: the copula control further down has 0.0384.
 - Skewness is small for every set. The Gaussian fields have excess kurtosis near 0 (0.02 and
   -0.01), the networks 0.33 and 0.37 and the held-out fields 0.13. The value distribution of the
   networks differs more from the held-out one than that of the Gaussian fields (KS distance
