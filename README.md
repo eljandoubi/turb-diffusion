@@ -39,7 +39,9 @@ spectrum of the training set. A second experiment reconstructs a field from its 
   it. With the channel, energy and enstrophy change by less than 2 percent in the solver (-8.3
   and -10 percent without it). The spectrum error (0.44 and 0.43 against 0.43) and the
   validation noise error (0.0709 and 0.0707 against 0.0709) do not change, and excess kurtosis is
-  a little higher (0.37 against 0.33). Reconstructions have about 10 percent lower L2 error.
+  a little higher (0.37 against 0.33). Reconstructions have about 10 percent lower L2 error (9.8
+  to 10.6 percent at the four fractions of observed points for seed 0, 7.1 to 9.9 percent for
+  seed 1).
 - **Sparse reconstruction by replacement does not beat Gaussian conditioning.** At 1 percent of
   the points the L2 error of a diffusion reconstruction is 1.12, that of a kriging posterior
   sample 1.10 and that of the kriging mean 0.78. At 10 percent it is 0.63, 0.44 and 0.31.
@@ -288,12 +290,13 @@ tails, the energy beyond the cutoff and the consistency; the high band is the on
 step 1000 is closer to the real spectrum, and the E(k) error over all shells does not show it.
 
 The start of the DDIM chain matters. The cosine schedule ends at a signal level of 2.4e-9, and a
-chain that starts there gives fields with a mean enstrophy about 5e4 times that of the
-validation fields. Every diffusion row of this README starts the chain at the last timestep with
-a signal level of at least 1e-3 (timestep 978). The tables compare five starts on the validation
-trajectory (100 samples, 50 DDIM steps, one sampler seed), first for the network without the
-forcing channel and then for the one with it. The fields are in units of the training standard
-deviation (1.98), which is also the unit of the first clean estimate and of the largest value.
+chain that starts there gives fields with a mean enstrophy 4.8e4 to 5.7e4 times that of the
+validation fields (the two networks). Every diffusion row of this README starts the chain at
+the last timestep with a signal level of at least 1e-3 (timestep 978). The tables compare five
+starts on the validation trajectory (100 samples, 50 DDIM steps, one sampler seed), first for
+the network without the forcing channel and then for the one with it. The fields are in units of
+the training standard deviation (1.98), which is also the unit of the first clean estimate and of
+the largest value.
 The validation errors are not comparable with the test-set errors of the other tables (100
 against 500 samples, another reference set).
 
