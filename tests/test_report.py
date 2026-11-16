@@ -151,6 +151,7 @@ def test_spin_up_windows_are_reported_against_the_snapshot_mean(report):
 
 
 def test_copula_control_keeps_the_gaussian_flatness_and_the_training_values(report):
+    """The control has the training values, not those of the networks."""
     results = ROOT / "results"
     control = json.loads((results / "copula.json").read_text())["sources"]
     control = control["g_mode_copula"]

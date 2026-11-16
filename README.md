@@ -226,11 +226,11 @@ three seeds).
 
 ### Gaussian copula control
 
-The flatness and the excess kurtosis of the networks could come from their value distribution
-alone. As a control, the 500 per-mode Gaussian fields of the diagnostics ("G mode") have their
+The flatness of the increments of the networks (4.1) is above that of the Gaussian fields (3.0
+to 3.1). As a control, the 500 per-mode Gaussian fields of the diagnostics ("G mode") have their
 values mapped onto the pooled values of the 2000 training fields (`scripts/copula.py`, no
 training, a few minutes on a CPU). The fields keep the rank order of the Gaussian field and take
-the value distribution of the training fields.
+the value distribution of the training fields, not that of the networks.
 
 | set | E(k) all | enstrophy mean | excess kurtosis | KS distance | S2 | S4 | flatness S4 / S2^2 at r = 1 | share outside k=21 | relaxation |
 |---|---|---|---|---|---|---|---|---|---|
@@ -242,13 +242,18 @@ the value distribution of the training fields.
 | diffusion, no forcing channel | 0.428 | 1.49 | 0.331 | 0.0398 | 0.314 | 0.64 | 4.1 | 0.000237 | 0.0362 |
 
 The mapping gives the training value distribution (excess kurtosis 0.131, KS distance 0.0064),
-but the flatness of the increments at r = 1 only rises from 3.13 to 3.2, against 4.1 for both
-networks and 4.46 for held-out fields: the value distribution alone does not give the flatness
-of the networks. The excess kurtosis of the networks (0.331 and 0.371) is above that of the
-control and of the real fields (0.131 and 0.133). On the other columns the control behaves like
-the Gaussian field: E(k) error 0.0384 against 0.0419, S4 error 0.177 against 0.186, change under
-the solver 0.192 against 0.188 (0.0262 and 0.0362 for the networks). The nonlinear mapping puts
-9.7e-5 of the mean square beyond the solver cutoff.
+but the flatness of the increments at r = 1 only rises from 3.13 to 3.2, against 4.46 for the
+held-out fields: the training value distribution alone does not give the flatness of the
+held-out fields. The flatness of the networks (4.1 for both) is above that of the control, and
+their own value distributions differ from the training one: the excess kurtosis of the networks
+(0.331 and 0.371) is above that of the control and of the real fields (0.131 and 0.133). Whether
+the value distributions of the networks explain their flatness was not tested. The generated
+fields were not kept and nothing was re-run for this control, so this section concludes nothing
+either way about the networks. A test needs the same mapping onto the pooled values of the
+generated fields of each network, compared on the columns of the table. On the other columns
+the control behaves like the Gaussian field: E(k) error 0.0384 against 0.0419, S4 error 0.177
+against 0.186, change under the solver 0.192 against 0.188 (0.0262 and 0.0362 for the networks).
+The nonlinear mapping puts 9.7e-5 of the mean square beyond the solver cutoff.
 
 ### Sampler and network variants
 
@@ -561,8 +566,10 @@ then over the three seeds (with their standard deviation).
   start tables), so it may move the reconstruction errors too.
 - The flatness and the excess kurtosis of the networks are compared with Gaussian fields and
   with one non-Gaussian control, a Gaussian copula with the training values (see Gaussian copula
-  control). Other surrogates with the same value distribution, for example phase-randomised
-  fields, were not run.
+  control). That control carries the training values, not those of the networks, so whether the
+  value distributions of the networks explain their flatness is untested: it needs a copula
+  control mapped onto the generated values, which were not kept. Other surrogates with the same
+  value distribution, for example phase-randomised fields, were not run.
 - The checkpoint and the replacement variant were chosen on the validation trajectory, never on
   the test fields. The DDIM start (signal level 1e-3) was set as the sampler default before the
   comparison on validation was committed, and it gives the highest validation spectrum error of

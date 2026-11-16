@@ -1,9 +1,10 @@
-"""Control for the non-Gaussian statistics: a Gaussian field with the training values.
+"""Control with the training values: a Gaussian field mapped onto them.
 
 Draws fields with the per-mode power of the training set (the "G mode" sample of
 evaluate.py, same seed), maps their values onto the pooled distribution of the
-training values and runs the diagnostics and the solver test of evaluate.py on
-them. Writes results/copula.json. Needs data/turb.npz and results/solver.json.
+training values (not the values of any network) and runs the diagnostics and the
+solver test of evaluate.py on them. Writes results/copula.json. Needs
+data/turb.npz and results/solver.json.
 """
 
 import argparse
