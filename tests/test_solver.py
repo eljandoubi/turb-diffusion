@@ -3,6 +3,7 @@ import math
 import pytest
 import torch
 
+from turbdiff import spectra
 from turbdiff.solver import Params, Solver, grid, random_vorticity
 
 
@@ -93,3 +94,23 @@ def test_time_stepping_has_fourth_order_accuracy():
     ref = run(0.00125)
     err = [(run(dt) - ref).pow(2).sum().sqrt() for dt in (0.02, 0.01)]
     assert 10 < err[0] / err[1] < 24
+
+
+def test_an_unchanged_mean_spectrum_does_not_make_an_ensemble_stationary():
+    """Two opposite shear flows keep the mean spectrum while their mean field moves."""
+    p, span = Params(n=32), 0.495
+    rate = p.nu * p.kf**2 + p.mu
+    forced = p.amp / rate
+    decay = math.exp(-rate * span)
+    amplitude = forced * math.sqrt((1 - decay) / (1 + decay))
+    solver = Solver(p)
+    y, _ = grid(p.n)
+    shear = amplitude * torch.cos(p.kf * y)
+    before = torch.stack((shear, -shear))
+    after = solver.evolve(before, span)
+    e0 = spectra.energy_spectrum(before).mean(0)
+    e1 = spectra.energy_spectrum(after).mean(0)
+    assert ((e1 - e0).abs() / e0)[p.kf - 1] < 1e-10
+    assert before.mean(0).abs().max() == 0
+    mean_rms = after.mean(0).pow(2).mean().sqrt().item()
+    assert mean_rms == pytest.approx(forced * (1 - decay) / math.sqrt(2), rel=1e-6)

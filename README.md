@@ -157,8 +157,13 @@ structure, and the generated fields have weaker small scales, as the spectrum ra
 
 ### Solver consistency
 
-Each set is evolved by the solver for one snapshot spacing (0.495). A set that lies on the
-attractor of the solver keeps its spectrum.
+Each set is evolved by the solver for one snapshot spacing (0.495) and the mean spectrum before
+and after is compared. An ensemble that is stationary under the solver keeps its mean spectrum,
+so a change of the spectrum shows that a set is not stationary. The converse does not hold: the
+score is a necessary, not a sufficient, stationarity diagnostic, because it looks at one second
+moment of the ensemble. A pair of opposite shear flows with the pattern of the forcing, at an
+amplitude chosen so that the energy stays the same, keeps its mean spectrum while its mean field
+changes (a test in `tests/test_solver.py`).
 
 | set | low | mid | high | all | all, shells 1 to 20 | ratio at k = 21 | enstrophy change | energy change |
 |---|---|---|---|---|---|---|---|---|
@@ -172,12 +177,13 @@ attractor of the solver keeps its spectrum.
 
 ![Change of the spectrum after one snapshot spacing](results/consistency.png)
 
-The Gaussian fields leave the attractor at once: the spectrum changes by 0.17 to 0.22 and 9 to
-12 percent of the energy and enstrophy are lost. The networks keep the shape of the spectrum much
-better (0.026 and 0.036; real fields 0.001). The network without the channel loses 8 and 10
-percent of its energy and enstrophy and its spectrum drops by 20 percent at k = 4, the forced
-shell; a random phase of the forced mode would explain this, but the cause was not tested
-separately. With the channel the energy and enstrophy change by less than 2 percent.
+The spectra of the Gaussian fields relax more than those of the networks over this interval: the
+spectrum changes by 0.17 to 0.22 and 9 to 12 percent of the energy and enstrophy are lost,
+against 0.026 and 0.036 for the networks (0.001 for real fields). The network without the
+channel loses 8 and 10 percent of its energy and enstrophy and its spectrum drops by 20 percent
+at k = 4, the forced shell; a random phase of the forced mode would explain this, but the cause
+was not tested separately. With the channel the energy and enstrophy change by less than 2
+percent.
 
 For both networks the spectrum at k = 21, the last shell the solver keeps, rises by 30 and 26
 percent (with and without the channel). The solver data are the least converged at that shell
@@ -526,8 +532,8 @@ it is (plain) and with the best of all symmetries of the flow (shifted).
 
 **Solver consistency.** Each set of fields is evolved by the solver for one snapshot spacing
 (0.495) and the mean spectrum before and after is compared in the same way. Real fields change
-little over one snapshot spacing (see the consistency table); fields that are off the attractor
-of the solver relax.
+little over one snapshot spacing (see the consistency table). A stationary ensemble keeps its
+mean spectrum, so the score is a necessary, not a sufficient, stationarity diagnostic.
 
 **Reconstruction.** The observed grid points are chosen at random (100 test fields, three
 seeds that fix both the points and the sampler noise). Kriging is the Gaussian conditioning

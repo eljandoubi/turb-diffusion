@@ -19,7 +19,7 @@ PARAMS = Params()
 
 
 def time_step_check(fields: torch.Tensor, span: float) -> dict:
-    """Evolve fields on the attractor with dt and dt / 2 and compare."""
+    """Evolve solver output fields with dt and dt / 2 and compare."""
     coarse = Solver(PARAMS).evolve(fields, span)
     fine = Solver(replace(PARAMS, dt=PARAMS.dt / 2)).evolve(fields, span)
     rel = (coarse - fine).flatten(1).norm(dim=1) / fine.flatten(1).norm(dim=1)
