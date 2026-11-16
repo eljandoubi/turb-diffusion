@@ -295,12 +295,15 @@ it once). The table sets the three runs side by side with the same samples and m
 - forcing channel: 3,567,409 parameters, 6000 steps of batch 64 on Tesla T4 in 21.3 minutes, final train loss 0.069, validation loss 0.0709, selected step 5750 (validation loss 0.0709).
 - forcing channel, seed 1: 3,567,409 parameters, 6000 steps of batch 64 on Tesla T4 in 19.7 minutes, final train loss 0.0672, validation loss 0.0707, selected step 5750 (validation loss 0.0707).
 - exact Gaussian denoiser, same validation fields, timesteps and noise: loss 0.12.
+- no forcing channel: training error above the validation error up to step 3500, except at step 2750, below it from step 3750 on.
+- forcing channel: training error above the validation error up to step 3500, except at step 2750, below it from step 3750 on.
+- forcing channel, seed 1: training error above the validation error up to step 3750, except at steps 2750, 3250, 3500, below it from step 4000 on.
 
 ![Validation and training noise error against the training step](results/training.png)
 
-The two curves lie on top of each other. The training error is a running mean over 250 steps with
-dropout on, the validation error comes from the EMA weights without dropout; the training error is
-above the validation error until step 3500 and below it from step 3750.
+The two curves lie on top of each other (the figure shows seed 0 of both networks). The training
+error is a running mean over 250 steps with dropout on and the validation error comes from the
+EMA weights without dropout, so the two are measured differently.
 
 The validation fields also pick the checkpoint (the lowest of 24 evaluations), the DDIM start and
 the replacement variant, so these losses are selection criteria and not test results. The loss on

@@ -3,6 +3,7 @@
 usage: python scripts/report.py [results_dir]
 """
 
+import csv
 import json
 import sys
 from pathlib import Path
@@ -329,12 +330,38 @@ def networks_table() -> str | None:
     return table(["metric"] + [c[0] for c in columns], rows)
 
 
+def read_log(name: str) -> list[dict[str, float]]:
+    with open(RESULTS / name, newline="") as f:
+        return [{k: float(v) for k, v in row.items()} for row in csv.DictReader(f)]
+
+
+def crossing_line(label: str, rows: list[dict[str, float]]) -> str:
+    """Where the training error lies above the validation error, in words."""
+    steps = [int(r["step"]) for r in rows]
+    above = [int(r["step"]) for r in rows if r["train_loss"] > r["val_loss_ema"]]
+    head = f"- {label}: training error"
+    if not above:
+        return f"{head} below the validation error at every evaluation."
+    last = max(above)
+    inside = [s for s in steps if s < last and s not in above]
+    text = f"{head} above the validation error up to step {last}"
+    if inside:
+        word = "steps" if len(inside) > 1 else "step"
+        text += f", except at {word} " + ", ".join(map(str, inside))
+    after = [s for s in steps if s > last]
+    return text + (f", below it from step {after[0]} on." if after else ".")
+
+
 def training_lines() -> list[str]:
-    out = []
-    for name, label in (
-        ("train.json", "no forcing channel"),
-        ("train_forcing.json", "forcing channel"),
-        ("train_forcing_seed1.json", "forcing channel, seed 1"),
+    out, crossings = [], []
+    for name, log, label in (
+        ("train.json", "train_log.csv", "no forcing channel"),
+        ("train_forcing.json", "train_log_forcing.csv", "forcing channel"),
+        (
+            "train_forcing_seed1.json",
+            "train_log_forcing_seed1.csv",
+            "forcing channel, seed 1",
+        ),
     ):
         path = RESULTS / name
         if not path.exists():
@@ -348,6 +375,8 @@ def training_lines() -> list[str]:
             f"{g(t['final_val_loss_ema'])}, selected step {t['selected_step']} "
             f"(validation loss {g(t['selected_val_loss_ema'])})."
         )
+        if (RESULTS / log).exists():
+            crossings.append(crossing_line(label, read_log(log)))
     diag = RESULTS / "diagnostics.json"
     if out and diag.exists():
         setup = json.loads(diag.read_text())["setup"]
@@ -356,7 +385,7 @@ def training_lines() -> list[str]:
                 "- exact Gaussian denoiser, same validation fields, timesteps and "
                 f"noise: loss {g(setup['gaussian_validation_loss'])}."
             )
-    return out
+    return out + crossings
 
 
 def main() -> None:
