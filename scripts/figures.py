@@ -3,7 +3,6 @@
 usage: python scripts/figures.py [results_dir]
 """
 
-import ast
 import csv
 import io
 import json
@@ -29,6 +28,15 @@ STYLE = {
     "diffusion_plain": ("diffusion, no forcing channel", "tab:purple", ":"),
 }
 KMAX = 21
+
+
+def name_diffusion(forcing: bool) -> None:
+    """Label the diffusion curves by the network that produced them."""
+    if forcing:
+        for key in ("diffusion", "diffusion_long"):
+            label, color, ls = STYLE[key]
+            label = label.replace("diffusion", "diffusion, forcing channel", 1)
+            STYLE[key] = (label, color, ls)
 
 
 def save_small(fig, name, dpi, colors):
@@ -71,13 +79,13 @@ def spectra_figure(diag):
     fig.savefig(RESULTS / "spectra.png", dpi=100)
 
 
-def fields_figure():
+def fields_figure(forcing):
     ex = np.load(RESULTS / "example_fields.npz")
     rows = [
         ("real_test", "real"),
         ("g_mode", "G mode"),
-        ("diffusion", "diffusion"),
-        ("diffusion_plain", "no forcing\nchannel"),
+        ("diffusion", "diffusion,\nforcing channel" if forcing else "diffusion"),
+        ("diffusion_plain", "diffusion,\nno forcing\nchannel"),
     ]
     rows = [row for row in rows if row[0] in ex.files]
     scale = 3.5 * float(ex["real_test"].astype(np.float32).std())
@@ -150,10 +158,15 @@ def consistency_figure(cons):
 
 def reconstruction_figure(rec, plain=None):
     ex = np.load(RESULTS / "reconstruction_example.npz")
+    name = (
+        "diffusion, forcing channel"
+        if rec["setup"].get("forcing_channel")
+        else "diffusion"
+    )
     curves = [
         (rec, "kriging_mean", "tab:blue", "-", "kriging mean"),
         (rec, "kriging_sample", "tab:green", "-", "kriging sample"),
-        (rec, "diffusion", "tab:red", "-", "diffusion"),
+        (rec, "diffusion", "tab:red", "-", name),
     ]
     if plain is not None:
         curves.append(
@@ -210,17 +223,13 @@ def reconstruction_figure(rec, plain=None):
 
 
 def read_log(path):
-    if path.suffix == ".csv":
-        with open(path) as f:
-            return [{k: float(v) for k, v in row.items()} for row in csv.DictReader(f)]
-    lines = path.read_text().splitlines()
-    return [ast.literal_eval(line) for line in lines if line.startswith("{")]
+    with open(path) as f:
+        return [{k: float(v) for k, v in row.items()} for row in csv.DictReader(f)]
 
 
 def training_figure(gaussian_loss):
     fig, ax = plt.subplots(figsize=(6.5, 4))
     runs = (
-        ("train_first_run.txt", "first run, no dropout", "0.4"),
         ("train_log.csv", "no forcing channel", "tab:purple"),
         ("train_log_forcing.csv", "forcing channel", "tab:red"),
     )
@@ -248,10 +257,12 @@ def main() -> None:
     gaussian_loss = None
     if (RESULTS / "diagnostics.json").exists():
         diag = load("diagnostics.json")
+        forcing = diag["setup"].get("forcing_channel", False)
+        name_diffusion(forcing)
         gaussian_loss = diag["setup"].get("gaussian_validation_loss")
         spectra_figure(diag)
         statistics_figure(diag)
-        fields_figure()
+        fields_figure(forcing)
     if (RESULTS / "consistency.json").exists():
         consistency_figure(load("consistency.json"))
     if (RESULTS / "reconstruction.json").exists():
