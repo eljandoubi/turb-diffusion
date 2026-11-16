@@ -150,7 +150,7 @@ def consistency_figure(cons):
         ax.semilogy(k, ratio[:KMAX], color=color, ls=ls, label=label)
     ax.axhline(1.0, color="0.7", lw=0.8)
     ax.set_xlabel("wavenumber k")
-    ax.set_ylabel("E(k) after / before one turnover time")
+    ax.set_ylabel("E(k) after / before one snapshot spacing")
     ax.legend(fontsize=8)
     fig.tight_layout()
     fig.savefig(RESULTS / "consistency.png", dpi=100)

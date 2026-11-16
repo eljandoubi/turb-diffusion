@@ -82,7 +82,14 @@ def solver_table(info: dict) -> str:
         ],
         [
             "energy, first and second half",
-            f"{g(s['first_half_mean'])}, {g(s['second_half_mean'])}",
+            f"{g(s['first_half_mean'])}, {g(s['second_half_mean'])} "
+            f"(relative difference {g(s['relative_drift'])})",
+        ],
+        [
+            "energy of the 20-unit windows before the snapshots, over the mean",
+            ", ".join(
+                g(w / s["energy_mean"]) for w in s["spin_up_energy_by_20_time_units"]
+            ),
         ],
         [
             "forced-mode coherence of the data",
@@ -100,7 +107,7 @@ def solver_table(info: dict) -> str:
         ts = checks["time_step"]
         rows.append(
             [
-                "dt against dt / 2 after one turnover time",
+                f"dt against dt / 2 after {g(ts['evolution_time'])} time units",
                 f"relative L2 {g(ts['max_relative_l2_difference'])}, "
                 f"E(k) {g(ts['max_relative_difference_of_E_k'])}",
             ]
@@ -389,9 +396,9 @@ def networks_table() -> str | None:
         "S4 mean abs log ratio",
         "flatness S4 / S2^2 at r = 1",
         "forced-mode coherence",
-        "E(k) change after one turnover time",
-        "enstrophy change after one turnover time",
-        "energy change after one turnover time",
+        "E(k) change after one snapshot spacing",
+        "enstrophy change after one snapshot spacing",
+        "energy change after one snapshot spacing",
         "reconstruction L2, 1% of the points",
         "reconstruction L2, 2% of the points",
         "reconstruction L2, 5% of the points",

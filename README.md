@@ -25,9 +25,9 @@ spectrum of the training set. A second experiment reconstructs a field from its 
   only for the level used.
 - **Where it does not, the diffusion model is closer to the real fields.** The flatness of
   vorticity increments at the smallest separation is 4.1 for both networks, 4.46 for held-out
-  fields and 3.0 to 3.1 for the Gaussian fields. After one eddy turnover time in the solver the
-  spectrum of the Gaussian fields changes by 0.17 to 0.22 (mean abs log ratio) against 0.026 and
-  0.036 for the networks and 0.001 for real fields (over shells 1 to 20: 0.15 to 0.20 against
+  fields and 3.0 to 3.1 for the Gaussian fields. After one snapshot spacing (0.495) in the solver
+  the spectrum of the Gaussian fields changes by 0.17 to 0.22 (mean abs log ratio) against 0.026
+  and 0.036 for the networks and 0.001 for real fields (over shells 1 to 20: 0.15 to 0.20 against
   0.0145 and 0.0263). On the validation fields, which also select the checkpoint, the network
   predicts the noise with an error of 0.071 and the exact Gaussian denoiser with 0.120 (the
   noise error on the test fields was not computed).
@@ -50,12 +50,12 @@ Every table below is printed by `scripts/report.py` from the files in `results/`
 `scripts/figures.py` draws the figures from the same files. The numbers in the text are read
 from these tables and figures (the ratios of spectra from `results/diagnostics.json`). The
 reference set (held-out, or test) is 500 fields from two solver trajectories that were not used
-for training. A third trajectory (validation, 250 fields) selects the checkpoint, the DDIM start
-and the replacement variant. The diagnostics use 500 generated fields per row and one sampler
-seed, the reconstruction uses 100 test fields and three sampler seeds. "Forcing channel" is the
-network with the extra input channel and "no forcing channel" the one without; both have 3.57
-million parameters and were trained with the same settings. Rows and tables of the channel
-network are its seed 0 unless a column says seed 1.
+for training. A third trajectory (validation, 250 fields) selects the checkpoint and the
+replacement variant and is the set on which the DDIM starts are compared. The diagnostics use
+500 generated fields per row and one sampler seed, the reconstruction uses 100 test fields and
+three sampler seeds. "Forcing channel" is the network with the extra input channel and "no
+forcing channel" the one without; both have 3.57 million parameters and were trained with the
+same settings. Rows and tables of the channel network are its seed 0 unless a column says seed 1.
 
 ### The solver and its data
 
@@ -69,17 +69,26 @@ network are its seed 0 unless a column says seed 1.
 | eddy turnover time | 0.497 |
 | snapshot spacing | 0.495 (99 steps) |
 | mean energy | 0.154 (std 0.0203) |
-| energy, first and second half | 0.154, 0.154 |
+| energy, first and second half | 0.154, 0.154 (relative difference 0.00282) |
+| energy of the 20-unit windows before the snapshots, over the mean | 0.965, 0.962, 0.994, 1.01, 1.05, 1.04 |
 | forced-mode coherence of the data | 0.967 |
 | correlation of snapshots, lag 1 and 5 | 0.94, 0.551 |
-| dt against dt / 2 after one turnover time | relative L2 1.12e-08, E(k) 5.22e-08 |
+| dt against dt / 2 after 0.505 time units | relative L2 1.12e-08, E(k) 5.22e-08 |
 | E(k) of the data over E(k) of a 128 x 128 run | k=5: 1, k=10: 1.1, k=14: 1.2, k=18: 1.4, k=21: 3.7 |
 
-The time step is small enough (a half step changes the fields after one turnover time by
-1e-8). The 64 x 64 grid is coarse: against a run on 128 x 128 points the mean spectrum of the
-data is within 20 percent at k = 5, 10 and 14 but 1.4 times larger at k = 18 and 3.7 times
-larger at k = 21, so the highest shells of the data are not converged. Consecutive snapshots
-are strongly correlated.
+The time step is small enough (a half step changes the fields after 0.505 time units, one over
+the rms vorticity of the training set, by 1e-8). The 64 x 64 grid is coarse: against a run on
+128 x 128 points the mean spectrum of the data is within 20 percent at k = 5, 10 and 14 but 1.4
+times larger at k = 18 and 3.7 times larger at k = 21, so the highest shells of the data are not
+converged. Consecutive snapshots are strongly correlated.
+
+The energy of the last two 20-unit windows before the snapshots (the last one is the window
+where the turnover time is measured) is about 5 and 4 percent above the mean energy of the
+snapshots, and that of the first two windows about 3.5 and 3.8 percent below it. The windows
+average all seven trajectories and the snapshot mean the four training ones, and the spread of a
+window mean was not computed. A slow change of the energy during the 100 time units of spin-up
+is therefore neither shown nor excluded; the two halves of the snapshot window, which differ by
+0.3 percent, do not test it.
 
 ### Spectrum
 
@@ -160,7 +169,7 @@ attractor of the solver keeps its spectrum.
 | diffusion, forcing channel | 0.0226 | 0.00978 | 0.0364 | 0.0262 | 0.0145 | 1.3 | 0.0183 | 0.00607 |
 | diffusion, no forcing channel | 0.0699 | 0.0125 | 0.0368 | 0.0362 | 0.0263 | 1.26 | -0.1 | -0.0828 |
 
-![Change of the spectrum after one turnover time](results/consistency.png)
+![Change of the spectrum after one snapshot spacing](results/consistency.png)
 
 The Gaussian fields leave the attractor at once: the spectrum changes by 0.17 to 0.22 and 9 to
 12 percent of the energy and enstrophy are lost. The networks keep the shape of the spectrum much
@@ -304,9 +313,9 @@ it once). The table sets the three runs side by side with the same samples and m
 | S4 mean abs log ratio | 0.64 | 0.662 | 0.679 |
 | flatness S4 / S2^2 at r = 1 | 4.1 | 4.1 | 4.11 |
 | forced-mode coherence | 0.0393 | 0.974 | 0.971 |
-| E(k) change after one turnover time | 0.0362 | 0.0262 | 0.0274 |
-| enstrophy change after one turnover time | -0.1 | 0.0183 | 0.0187 |
-| energy change after one turnover time | -0.0828 | 0.00607 | 0.00579 |
+| E(k) change after one snapshot spacing | 0.0362 | 0.0262 | 0.0274 |
+| enstrophy change after one snapshot spacing | -0.1 | 0.0183 | 0.0187 |
+| energy change after one snapshot spacing | -0.0828 | 0.00607 | 0.00579 |
 | reconstruction L2, 1% of the points | 1.24 | 1.12 | 1.12 |
 | reconstruction L2, 2% of the points | 1.19 | 1.07 | 1.07 |
 | reconstruction L2, 5% of the points | 1.02 | 0.913 | 0.923 |
@@ -420,9 +429,9 @@ units, the turnover time rounded to whole steps).
 
 **Data.** Seeds 0 to 3 give the four training trajectories (500 snapshots each, 2000
 fields), seeds 100 and 101 the two held-out test trajectories (250 snapshots each, 500
-fields), seed 200 a validation trajectory (250 fields) that selects the checkpoint, the DDIM
-start and the replacement variant. Fields are divided by the standard deviation of the
-training set (1.98).
+fields), seed 200 a validation trajectory (250 fields) that selects the checkpoint and the
+replacement variant and is the set on which the DDIM starts are compared. Fields are divided by
+the standard deviation of the training set (1.98).
 
 **Gaussian random field G.** "G mode" draws fields with the mean power of every Fourier mode
 of the training set, "G shell" with that power averaged over the shells of constant round(|k|).
@@ -464,8 +473,9 @@ field to the closest of the 2000 training fields, as it is (plain) and with the 
 symmetries of the flow (shifted).
 
 **Solver consistency.** Each set of fields is evolved by the solver for one snapshot spacing
-(0.495) and the mean spectrum before and after is compared in the same way. Real fields stay
-on the attractor of the solver and change little; fields that are off it relax.
+(0.495) and the mean spectrum before and after is compared in the same way. Real fields change
+little over one snapshot spacing (see the consistency table); fields that are off the attractor
+of the solver relax.
 
 **Reconstruction.** The observed grid points are chosen at random (100 test fields, three
 seeds that fix both the points and the sampler noise). Kriging is the Gaussian conditioning
@@ -484,6 +494,9 @@ then over the three seeds (with their standard deviation).
   Nothing here says anything about three-dimensional turbulence or about other flows.
 - The solver data are not converged at the highest shells (see the solver table), so "the right
   statistics" means the statistics of this solver's output on this grid.
+- The 100 time units of spin-up were not shown to be long enough: the last two 20-unit windows
+  before the snapshots hold about 5 and 4 percent more energy than the snapshots (solver table),
+  and no longer spin-up was run.
 - The training set is 2000 fields from four trajectories whose neighbouring snapshots are strongly
   correlated, and the reference is 500 fields from two other trajectories. The network without the
   channel was trained once (seed 0) and the one with it twice (seeds 0 and 1); the diagnostics use

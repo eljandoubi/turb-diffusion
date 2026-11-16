@@ -133,3 +133,34 @@ def test_relaxation_score_over_shells_1_to_20_keeps_the_ranking(report):
     gaussians = (score["g_shell"], score["g_mode"], score["g_mode_ddim"])
     assert max(networks) < min(gaussians)
     assert score["diffusion"] < score["diffusion_plain"]
+
+
+def solver_info():
+    return json.loads((ROOT / "results" / "solver.json").read_text())
+
+
+def test_spin_up_windows_are_reported_against_the_snapshot_mean(report):
+    s = solver_info()["stationarity"]
+    ratio = [w / s["energy_mean"] for w in s["spin_up_energy_by_20_time_units"]]
+    assert len(ratio) == 6
+    assert all(0.03 < 1 - r < 0.04 for r in ratio[:2])
+    assert all(0.03 < r - 1 < 0.06 for r in ratio[4:])
+    assert "| 0.965, 0.962, 0.994, 1.01, 1.05, 1.04 |" in report.solver_table(
+        solver_info()
+    )
+
+
+def test_time_step_check_names_its_own_time_span(report):
+    info = solver_info()
+    row = next(
+        line
+        for line in report.solver_table(info).splitlines()
+        if line.startswith("| dt against")
+    )
+    assert row.startswith("| dt against dt / 2 after 0.505 time units |")
+    spans = (
+        info["turnover"]["eddy_turnover_time"],
+        info["turnover"]["snapshot_time"],
+        info["checks"]["time_step"]["evolution_time"],
+    )
+    assert len({round(span, 3) for span in spans}) == 3
