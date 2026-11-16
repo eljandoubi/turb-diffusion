@@ -490,7 +490,10 @@ units, the turnover time rounded to whole steps).
 fields), seeds 100 and 101 the two held-out test trajectories (250 snapshots each, 500
 fields), seed 200 a validation trajectory (250 fields) that selects the checkpoint and the
 replacement variant and is the set on which the DDIM starts are compared. Fields are divided by
-the standard deviation of the training set (1.98).
+the standard deviation of the training set (1.98). The snapshot spacing comes from the
+root-mean-square vorticity of the measurement windows of all seven trajectories, pooled before
+the split, so the held-out and validation trajectories enter this one number (a small pooled
+preprocessing choice).
 
 **Gaussian random field G.** "G mode" draws fields with the mean power of every Fourier mode
 of the training set, "G shell" with that power averaged over the shells of constant round(|k|).
