@@ -112,6 +112,13 @@ def solver_table(info: dict) -> str:
     return table(["quantity", "value"], rows)
 
 
+def flatness(sf: dict) -> float:
+    """S4 / S2^2 of the increments at the smallest separation, mean of x and y."""
+    s2 = (sf["S2"]["x"][0] + sf["S2"]["y"][0]) / 2
+    s4 = (sf["S4"]["x"][0] + sf["S4"]["y"][0]) / 2
+    return s4 / s2**2
+
+
 def diagnostics_table(diag: dict) -> str:
     src = diag["sources"]
     names = [s for s in SOURCES if s in src]
@@ -133,6 +140,10 @@ def diagnostics_table(diag: dict) -> str:
             [f"{order} mean abs log ratio"]
             + [g(src[s]["structure_log_ratio"][order]) for s in names]
         )
+    rows.append(
+        ["flatness S4 / S2^2 at r = 1"]
+        + [g(flatness(src[s]["structure_functions"])) for s in names]
+    )
     rows.append(
         ["forced-mode coherence"] + [g(src[s]["forced_mode_coherence"]) for s in names]
     )
@@ -237,11 +248,90 @@ def start_table(start: dict) -> str:
     return table(header, rows)
 
 
+def read(name: str) -> dict | None:
+    path = RESULTS / name
+    return json.loads(path.read_text()) if path.exists() else None
+
+
+def networks_table() -> str | None:
+    """The trained networks side by side, one column per network and seed."""
+    diag, cons = read("diagnostics.json"), read("consistency.json")
+    other = (
+        read("diagnostics_forcing_seed1.json"),
+        read("consistency_forcing_seed1.json"),
+    )
+    if not (diag and cons and all(other) and "diffusion_plain" in diag["sources"]):
+        return None
+    columns = (
+        (
+            "no forcing channel, seed 0",
+            diag,
+            cons,
+            "diffusion_plain",
+            "train.json",
+            "reconstruction_plain.json",
+        ),
+        (
+            "forcing channel, seed 0",
+            diag,
+            cons,
+            "diffusion",
+            "train_forcing.json",
+            "reconstruction.json",
+        ),
+        (
+            "forcing channel, seed 1",
+            *other,
+            "diffusion",
+            "train_forcing_seed1.json",
+            "reconstruction_forcing_seed1.json",
+        ),
+    )
+    cells = []
+    for _, dg, cs, key, train, rec in columns:
+        d, c, t, r = dg["sources"][key], cs["sources"][key], read(train), read(rec)
+        column = [g(t["selected_val_loss_ema"])]
+        column += [g(d["band_log_ratio"][b]) for b in ("low", "mid", "high", "all")]
+        column += [g(d[k]) for k in ("enstrophy_mean", "enstrophy_std")]
+        column += [g(d["excess_kurtosis"]), g(d["ks_distance"])]
+        column += [g(d["structure_log_ratio"][o]) for o in ("S2", "S4")]
+        column += [g(flatness(d["structure_functions"]))]
+        column += [g(d["forced_mode_coherence"]), g(c["band_log_ratio"]["all"])]
+        column += [
+            g(r["results"][p]["diffusion"]["relative_l2"]["mean"])
+            for p in ("1", "2", "5", "10")
+        ]
+        cells.append(column)
+    labels = [
+        "held-out noise error",
+        "E(k) mean abs log ratio, low",
+        "E(k) mean abs log ratio, mid",
+        "E(k) mean abs log ratio, high",
+        "E(k) mean abs log ratio, all",
+        "enstrophy mean",
+        "enstrophy std",
+        "excess kurtosis",
+        "KS distance of the values",
+        "S2 mean abs log ratio",
+        "S4 mean abs log ratio",
+        "flatness S4 / S2^2 at r = 1",
+        "forced-mode coherence",
+        "E(k) change after one turnover time",
+        "reconstruction L2, 1% of the points",
+        "reconstruction L2, 2% of the points",
+        "reconstruction L2, 5% of the points",
+        "reconstruction L2, 10% of the points",
+    ]
+    rows = [[label, *values] for label, *values in zip(labels, *cells, strict=True)]
+    return table(["metric"] + [c[0] for c in columns], rows)
+
+
 def training_lines() -> list[str]:
     out = []
     for name, label in (
         ("train.json", "no forcing channel"),
         ("train_forcing.json", "forcing channel"),
+        ("train_forcing_seed1.json", "forcing channel, seed 1"),
     ):
         path = RESULTS / name
         if not path.exists():
@@ -296,6 +386,11 @@ def main() -> None:
     if all(p.exists() for p in both):
         print("### Sampler and network variants\n")
         print(steps_table(*(json.loads(p.read_text()) for p in both)))
+        print()
+    networks = networks_table()
+    if networks:
+        print("### Networks and seeds\n")
+        print(networks)
         print()
     lines = training_lines()
     if lines:
