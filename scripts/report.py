@@ -5,6 +5,7 @@ usage: python scripts/report.py [results_dir]
 
 import csv
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -171,18 +172,35 @@ def diagnostics_table(diag: dict) -> str:
     return table(["metric"] + [titles(diag["setup"])[s] for s in names], rows)
 
 
+def mean_abs_log(ratio: list[float], shells: int) -> float:
+    """Mean |log r| over the first shells of a spectrum ratio."""
+    return sum(abs(math.log(r)) for r in ratio[:shells]) / shells
+
+
 def consistency_table(cons: dict) -> str:
     src = cons["sources"]
     names = [s for s in SOURCES if s in src]
     rows = []
     for s in names:
         c = src[s]
+        ratio = c["spectrum_ratio_after_over_before"]
         rows.append(
             [titles(cons["setup"])[s]]
             + [g(c["band_log_ratio"][b]) for b in ("low", "mid", "high", "all")]
+            + [g(mean_abs_log(ratio, 20)), g(ratio[20])]
             + [g(c["enstrophy_relative_change"]), g(c["energy_relative_change"])]
         )
-    header = ["set", "low", "mid", "high", "all", "enstrophy change", "energy change"]
+    header = [
+        "set",
+        "low",
+        "mid",
+        "high",
+        "all",
+        "all, shells 1 to 20",
+        "ratio at k = 21",
+        "enstrophy change",
+        "energy change",
+    ]
     return table(header, rows)
 
 

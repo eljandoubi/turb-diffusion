@@ -3,6 +3,7 @@
 import importlib.util
 import inspect
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -110,3 +111,25 @@ def test_early_checkpoint_is_better_only_in_the_high_band(report):
         assert early[key] > final[key]
     assert early["forced_mode_coherence"] < final["forced_mode_coherence"]
     assert early["enstrophy_mean"] < final["enstrophy_mean"]
+
+
+def test_mean_abs_log_averages_the_first_shells(report):
+    ratio = [2.0, 0.5, 1.0, 4.0]
+    assert report.mean_abs_log(ratio, 3) == pytest.approx(2 * math.log(2) / 3)
+    assert report.mean_abs_log(ratio, 4) == pytest.approx(4 * math.log(2) / 4)
+
+
+def test_relaxation_score_over_shells_1_to_20_keeps_the_ranking(report):
+    path = ROOT / "results" / "consistency.json"
+    sources = json.loads(path.read_text())["sources"]
+    score = {
+        name: report.mean_abs_log(s["spectrum_ratio_after_over_before"], 20)
+        for name, s in sources.items()
+    }
+    for s in sources.values():
+        full = report.mean_abs_log(s["spectrum_ratio_after_over_before"], 21)
+        assert full == pytest.approx(s["band_log_ratio"]["all"], rel=1e-9)
+    networks = (score["diffusion"], score["diffusion_plain"])
+    gaussians = (score["g_shell"], score["g_mode"], score["g_mode_ddim"])
+    assert max(networks) < min(gaussians)
+    assert score["diffusion"] < score["diffusion_plain"]

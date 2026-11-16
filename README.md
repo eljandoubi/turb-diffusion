@@ -27,9 +27,10 @@ spectrum of the training set. A second experiment reconstructs a field from its 
   vorticity increments at the smallest separation is 4.1 for both networks, 4.46 for held-out
   fields and 3.0 to 3.1 for the Gaussian fields. After one eddy turnover time in the solver the
   spectrum of the Gaussian fields changes by 0.17 to 0.22 (mean abs log ratio) against 0.026 and
-  0.036 for the networks and 0.001 for real fields. On the validation fields, which also select
-  the checkpoint, the network predicts the noise with an error of 0.071 and the exact Gaussian
-  denoiser with 0.120 (the noise error on the test fields was not computed).
+  0.036 for the networks and 0.001 for real fields (over shells 1 to 20: 0.15 to 0.20 against
+  0.0145 and 0.0263). On the validation fields, which also select the checkpoint, the network
+  predicts the noise with an error of 0.071 and the exact Gaussian denoiser with 0.120 (the
+  noise error on the test fields was not computed).
 - **The forcing channel fixes the phase, the drift under the solver and part of the
   reconstruction error, not the spectrum or the tails.** The coherence of the forced Fourier
   mode is 0.974 and 0.971 for two seeds with the channel (real fields 0.966) and 0.039 without
@@ -149,15 +150,15 @@ structure, and the generated fields have weaker small scales, as the spectrum ra
 Each set is evolved by the solver for one snapshot spacing (0.495). A set that lies on the
 attractor of the solver keeps its spectrum.
 
-| set | low | mid | high | all | enstrophy change | energy change |
-|---|---|---|---|---|---|---|
-| real held-out | 0.00154 | 0.000647 | 0.00091 | 0.000956 | 0.000846 | 0.000511 |
-| real train | 0.000457 | 0.0048 | 0.0067 | 0.00497 | 3.65e-05 | 6.01e-05 |
-| G shell | 0.0887 | 0.15 | 0.212 | 0.171 | -0.115 | -0.0936 |
-| G mode | 0.0906 | 0.173 | 0.233 | 0.188 | -0.121 | -0.099 |
-| G mode, DDIM oracle | 0.0835 | 0.188 | 0.287 | 0.22 | -0.109 | -0.087 |
-| diffusion, forcing channel | 0.0226 | 0.00978 | 0.0364 | 0.0262 | 0.0183 | 0.00607 |
-| diffusion, no forcing channel | 0.0699 | 0.0125 | 0.0368 | 0.0362 | -0.1 | -0.0828 |
+| set | low | mid | high | all | all, shells 1 to 20 | ratio at k = 21 | enstrophy change | energy change |
+|---|---|---|---|---|---|---|---|---|
+| real held-out | 0.00154 | 0.000647 | 0.00091 | 0.000956 | 0.000934 | 0.999 | 0.000846 | 0.000511 |
+| real train | 0.000457 | 0.0048 | 0.0067 | 0.00497 | 0.00465 | 1.01 | 3.65e-05 | 6.01e-05 |
+| G shell | 0.0887 | 0.15 | 0.212 | 0.171 | 0.152 | 0.581 | -0.115 | -0.0936 |
+| G mode | 0.0906 | 0.173 | 0.233 | 0.188 | 0.169 | 0.559 | -0.121 | -0.099 |
+| G mode, DDIM oracle | 0.0835 | 0.188 | 0.287 | 0.22 | 0.197 | 0.508 | -0.109 | -0.087 |
+| diffusion, forcing channel | 0.0226 | 0.00978 | 0.0364 | 0.0262 | 0.0145 | 1.3 | 0.0183 | 0.00607 |
+| diffusion, no forcing channel | 0.0699 | 0.0125 | 0.0368 | 0.0362 | 0.0263 | 1.26 | -0.1 | -0.0828 |
 
 ![Change of the spectrum after one turnover time](results/consistency.png)
 
@@ -166,9 +167,13 @@ The Gaussian fields leave the attractor at once: the spectrum changes by 0.17 to
 better (0.026 and 0.036; real fields 0.001). The network without the channel loses 8 and 10
 percent of its energy and enstrophy and its spectrum drops by 20 percent at k = 4, the forced
 shell; a random phase of the forced mode would explain this, but the cause was not tested
-separately. With the channel the energy and enstrophy change by less than 2 percent. For both
-networks the spectrum at k = 21, the last shell the solver keeps, rises by 30 and 26 percent
-(with and without the channel).
+separately. With the channel the energy and enstrophy change by less than 2 percent.
+
+For both networks the spectrum at k = 21, the last shell the solver keeps, rises by 30 and 26
+percent (with and without the channel). The solver data are the least converged at that shell
+(see the solver table), and it raises both scores. Over shells 1 to 20 (column "all, shells 1 to
+20") the scores are 0.0145 and 0.0263 for the networks, 0.15 to 0.20 for the Gaussian fields and
+0.0009 for real fields: the ranking does not depend on shell 21.
 
 ### Sparse-observation reconstruction
 
