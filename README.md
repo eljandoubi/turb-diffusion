@@ -24,14 +24,15 @@ spectrum of the training set. A second experiment reconstructs a field from its 
   vorticity increments at the smallest separation is 4.1 for both networks, 4.46 for held-out
   fields and 3.0 to 3.1 for the Gaussian fields. After one eddy turnover time in the solver the
   spectrum of the Gaussian fields changes by 0.17 to 0.22 (mean abs log ratio) against 0.026 and
-  0.036 for the networks and 0.001 for real fields. On held-out fields the network predicts the
-  noise with an error of 0.071, the exact Gaussian denoiser with 0.120.
+  0.036 for the networks and 0.001 for real fields. On the validation fields, which also select
+  the checkpoint, the network predicts the noise with an error of 0.071 and the exact Gaussian
+  denoiser with 0.120 (the noise error on the test fields was not computed).
 - **The forcing channel fixes the phase, the drift under the solver and part of the
   reconstruction error, not the spectrum or the tails.** The coherence of the forced Fourier
   mode is 0.974 and 0.971 for two seeds with the channel (real fields 0.966) and 0.039 without
   it. With the channel, energy and enstrophy change by less than 2 percent in the solver (-8.3
   and -10 percent without it). The spectrum error (0.44 and 0.43 against 0.43) and the
-  held-out noise error (0.0709 and 0.0707 against 0.0709) do not change, and excess kurtosis is
+  validation noise error (0.0709 and 0.0707 against 0.0709) do not change, and excess kurtosis is
   a little higher (0.37 against 0.33). Reconstructions have about 10 percent lower L2 error.
 - **Sparse reconstruction by replacement does not beat Gaussian conditioning.** At 1 percent of
   the points the L2 error of a diffusion reconstruction is 1.12, that of a kriging posterior
@@ -44,12 +45,13 @@ spectrum of the training set. A second experiment reconstructs a field from its 
 Every table below is printed by `scripts/report.py` from the files in `results/`, and
 `scripts/figures.py` draws the figures from the same files. The numbers in the text are read
 from these tables and figures (the ratios of spectra from `results/diagnostics.json`). The
-reference set is 500 fields from two solver trajectories that were not used for training. The
-diagnostics use 500 generated fields per row and one sampler seed, the reconstruction uses 100
-test fields and three sampler seeds. "Forcing channel" is the network with the extra input
-channel and "no forcing channel" the one without; both have 3.57 million parameters and were
-trained with the same settings. Rows and tables of the channel network are its seed 0 unless a
-column says seed 1.
+reference set (held-out, or test) is 500 fields from two solver trajectories that were not used
+for training. A third trajectory (validation, 250 fields) selects the checkpoint, the DDIM start
+and the replacement variant. The diagnostics use 500 generated fields per row and one sampler
+seed, the reconstruction uses 100 test fields and three sampler seeds. "Forcing channel" is the
+network with the extra input channel and "no forcing channel" the one without; both have 3.57
+million parameters and were trained with the same settings. Rows and tables of the channel
+network are its seed 0 unless a column says seed 1.
 
 ### The solver and its data
 
@@ -251,7 +253,7 @@ it once). The table sets the three runs side by side with the same samples and m
 
 | metric | no forcing channel, seed 0 | forcing channel, seed 0 | forcing channel, seed 1 |
 |---|---|---|---|
-| held-out noise error | 0.0709 | 0.0709 | 0.0707 |
+| validation noise error | 0.0709 | 0.0709 | 0.0707 |
 | E(k) mean abs log ratio, low | 0.292 | 0.331 | 0.336 |
 | E(k) mean abs log ratio, mid | 0.308 | 0.303 | 0.317 |
 | E(k) mean abs log ratio, high | 0.542 | 0.552 | 0.53 |
@@ -278,7 +280,7 @@ it once). The table sets the three runs side by side with the same samples and m
   and -10 percent), the E(k) change (0.026 and 0.027 against 0.036) and the reconstruction L2 error
   (1.12 and 1.12 against 1.24 at 1 percent of the points, 0.63 and 0.65 against 0.70 at 10 percent).
 - Not different, or by about as much as the two seeds differ: the E(k) error (0.439 and 0.432
-  against 0.428) and the held-out noise error (0.0709 and 0.0707 against 0.0709).
+  against 0.428) and the validation noise error (0.0709 and 0.0707 against 0.0709).
 - Slightly worse with the channel in both seeds: the low band of the spectrum (0.33 and 0.34
   against 0.29), excess kurtosis (0.371 and 0.373 against 0.331) and the KS distance (0.043 and
   0.044 against 0.040), where the gap between the two kinds of network is 7 to 8, about 20 and
@@ -289,16 +291,20 @@ it once). The table sets the three runs side by side with the same samples and m
 
 ### Training
 
-- no forcing channel: 3,566,977 parameters, 6000 steps of batch 64 on Tesla T4 in 22 minutes, final train loss 0.0689, held-out loss 0.0709, selected step 5750 (held-out loss 0.0709).
-- forcing channel: 3,567,409 parameters, 6000 steps of batch 64 on Tesla T4 in 21.3 minutes, final train loss 0.069, held-out loss 0.0709, selected step 5750 (held-out loss 0.0709).
-- forcing channel, seed 1: 3,567,409 parameters, 6000 steps of batch 64 on Tesla T4 in 19.7 minutes, final train loss 0.0672, held-out loss 0.0707, selected step 5750 (held-out loss 0.0707).
-- exact Gaussian denoiser, same held-out fields, timesteps and noise: loss 0.12.
+- no forcing channel: 3,566,977 parameters, 6000 steps of batch 64 on Tesla T4 in 22 minutes, final train loss 0.0689, validation loss 0.0709, selected step 5750 (validation loss 0.0709).
+- forcing channel: 3,567,409 parameters, 6000 steps of batch 64 on Tesla T4 in 21.3 minutes, final train loss 0.069, validation loss 0.0709, selected step 5750 (validation loss 0.0709).
+- forcing channel, seed 1: 3,567,409 parameters, 6000 steps of batch 64 on Tesla T4 in 19.7 minutes, final train loss 0.0672, validation loss 0.0707, selected step 5750 (validation loss 0.0707).
+- exact Gaussian denoiser, same validation fields, timesteps and noise: loss 0.12.
 
-![Held-out and training noise error against the training step](results/training.png)
+![Validation and training noise error against the training step](results/training.png)
 
 The two curves lie on top of each other. The training error is a running mean over 250 steps with
-dropout on, the held-out error comes from the EMA weights without dropout; the training error is
-above the held-out error until step 3500 and below it from step 3750.
+dropout on, the validation error comes from the EMA weights without dropout; the training error is
+above the validation error until step 3500 and below it from step 3750.
+
+The validation fields also pick the checkpoint (the lowest of 24 evaluations), the DDIM start and
+the replacement variant, so these losses are selection criteria and not test results. The loss on
+the test fields was not computed: the weights were not kept.
 
 ## What is in the repo
 

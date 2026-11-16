@@ -304,7 +304,7 @@ def networks_table() -> str | None:
         ]
         cells.append(column)
     labels = [
-        "held-out noise error",
+        "validation noise error",
         "E(k) mean abs log ratio, low",
         "E(k) mean abs log ratio, mid",
         "E(k) mean abs log ratio, high",
@@ -344,16 +344,16 @@ def training_lines() -> list[str]:
             f"- {label}: {t['parameters']:,} parameters, {t['steps']} steps of "
             f"batch {t['batch']} on {t['device']} in "
             f"{g(t['wall_clock_seconds'] / 60)} minutes, final train loss "
-            f"{g(t['final_train_loss'])}, held-out loss "
+            f"{g(t['final_train_loss'])}, validation loss "
             f"{g(t['final_val_loss_ema'])}, selected step {t['selected_step']} "
-            f"(held-out loss {g(t['selected_val_loss_ema'])})."
+            f"(validation loss {g(t['selected_val_loss_ema'])})."
         )
     diag = RESULTS / "diagnostics.json"
     if out and diag.exists():
         setup = json.loads(diag.read_text())["setup"]
         if "gaussian_validation_loss" in setup:
             out.append(
-                "- exact Gaussian denoiser, same held-out fields, timesteps and "
+                "- exact Gaussian denoiser, same validation fields, timesteps and "
                 f"noise: loss {g(setup['gaussian_validation_loss'])}."
             )
     return out

@@ -126,14 +126,14 @@ def main() -> None:
         g = torch.Generator().manual_seed(args.seed + 1 + i)
         sources[name] = field.sample(args.samples, g)
     oracle = GaussianDenoiser(gens["g_mode"].power / sigma**2, sched)
-    held = data["val"].reshape(-1, n, n).double() / sigma
-    held = torch.cat([held, held])
+    val = data["val"].reshape(-1, n, n).double() / sigma
+    val = torch.cat([val, val])
     noise = torch.randn(
-        (len(held), 1, n, n), generator=torch.Generator().manual_seed(12345)
+        (len(val), 1, n, n), generator=torch.Generator().manual_seed(12345)
     )
-    t = (torch.arange(len(held)) * 397) % sched.steps
+    t = (torch.arange(len(val)) * 397) % sched.steps
     gaussian_loss = noise_prediction_error(
-        gens["g_mode"].power / sigma**2, sched, held, t, noise[:, 0]
+        gens["g_mode"].power / sigma**2, sched, val, t, noise[:, 0]
     )
     model = load_model(args.work / "ema.pt", args.base, args.forcing, device)
     for name, net, steps in (

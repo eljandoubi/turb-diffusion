@@ -2,7 +2,7 @@
 
 Writes results/train.json and results/train_log.csv (train_x.json and
 train_log_x.csv with --tag _x). The weights go to --work and are not tracked:
-one EMA checkpoint per evaluation, and ema.pt, the one with the lowest held-out
+one EMA checkpoint per evaluation, and ema.pt, the one with the lowest validation
 noise-prediction error. A GPU is recommended; on a CPU use a few steps to test.
 """
 
@@ -31,7 +31,7 @@ def learning_rate(step: int, steps: int, lr: float, warmup: int) -> float:
 
 @torch.no_grad()
 def validation_loss(model, sched, fields, device) -> float:
-    """Noise-prediction error on held-out fields, with fixed timesteps and noise."""
+    """Noise-prediction error on validation fields, with fixed timesteps and noise."""
     fields = torch.cat([fields, fields])
     g = torch.Generator().manual_seed(12345)
     noise = torch.randn(fields.shape, generator=g).to(device)

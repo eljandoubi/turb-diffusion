@@ -246,7 +246,7 @@ def training_figure(gaussian_loss):
         )
     ax.set_ylim(0.05, 0.16)
     ax.set_xlabel("step")
-    ax.plot([], [], color="black", lw=0.8, label="solid: held-out, dashed: train")
+    ax.plot([], [], color="black", lw=0.8, label="solid: validation, dashed: train")
     ax.set_ylabel("noise prediction error")
     ax.legend(fontsize=8)
     fig.tight_layout()
