@@ -27,13 +27,27 @@ def report(monkeypatch):
     return module
 
 
+def blocks(lines):
+    """Runs of consecutive table rows or list items."""
+    runs, run = [], []
+    for line in [*lines, ""]:
+        if line.startswith(("|", "- ")):
+            run.append(line)
+        elif run:
+            runs.append(run)
+            run = []
+    return runs
+
+
 def test_readme_tables_are_what_the_report_prints(report, capsys):
     report.main()
-    printed = capsys.readouterr().out.splitlines()
-    readme = set((ROOT / "README.md").read_text().splitlines())
-    rows = [line for line in printed if line.startswith(("|", "- "))]
-    assert len(rows) > 100
-    assert [line for line in rows if line not in readme] == []
+    printed = blocks(capsys.readouterr().out.splitlines())
+    readme = blocks((ROOT / "README.md").read_text().splitlines())
+    assert len(printed) == 12
+    assert [block[0] for block in printed if readme.count(block) != 1] == []
+    others = [block for block in readme if block[0].startswith("|")]
+    others = [block for block in others if block not in printed]
+    assert [block[0] for block in others] == ["| path | content |"]
 
 
 def log_rows(pairs):
