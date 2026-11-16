@@ -396,9 +396,11 @@ The two curves lie on top of each other (the figure shows seed 0 of both network
 error is a running mean over 250 steps with dropout on and the validation error comes from the
 EMA weights without dropout, so the two are measured differently.
 
-The validation fields also pick the checkpoint (the lowest of 24 evaluations), the DDIM start and
-the replacement variant, so these losses are selection criteria and not test results. The loss on
-the test fields was not computed: the weights were not kept.
+The validation fields pick the checkpoint (the lowest of 24 evaluations) and the replacement
+variant, so these losses are selection criteria and not test results. The DDIM start (1e-3) was
+set as the sampler default before the starts were compared on the validation fields (see how
+1e-3 became the setting, above). The loss on the test fields was not computed: the weights were
+not kept.
 
 ## What is in the repo
 
