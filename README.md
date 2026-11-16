@@ -419,7 +419,7 @@ not kept.
 | `scripts/train.py`, `sampler_start.py`, `evaluate.py`, `reconstruct.py` | training, DDIM start comparison, diagnostics and solver consistency, sparse-observation experiment |
 | `scripts/copula.py` | Gaussian copula control with the training values, writes `results/copula.json` |
 | `scripts/report.py`, `figures.py` | markdown tables and figures from `results/` |
-| `tests/` | analytic tests of the solver and of every other module, and checks that the tables and commands of this README match `scripts/report.py` and `results/` (72 tests) |
+| `tests/` | analytic tests of the solver and of every other module, and checks that the tables, the commands and the main figures in the sentences of this README match `scripts/report.py` and `results/` (82 tests) |
 | `results/` | JSON, CSV, NPZ and PNG files that the tables and figures above come from (no weights) |
 
 ## Reproduce
@@ -594,6 +594,11 @@ then over the three seeds (with their standard deviation).
   settings were fixed once and not searched.
 - The nearest-neighbour check looks for near copies. It does not rule out weaker forms of
   memorisation of 2000 strongly correlated training fields.
+- Most figures that the sentences of this README quote are recomputed from `results/` by
+  `tests/test_prose.py` (spectrum ratios, relaxation scores, reconstruction gain, spin-up windows,
+  resolution ratios, start ranges, enstrophy). Others, such as the nearest-neighbour distances,
+  the early-checkpoint comparison and the copula comparison, are copied by hand from the tables
+  and are not pinned by a test.
 - Timings come from one T4 session and include the compile time of the first steps.
 
 ## License
