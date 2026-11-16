@@ -25,12 +25,13 @@ spectrum of the training set. A second experiment reconstructs a field from its 
   only for the level used.
 - **Where it does not, the diffusion model is closer to the real fields.** The flatness of
   vorticity increments at the smallest separation is 4.1 for both networks, 4.46 for held-out
-  fields and 3.0 to 3.1 for the Gaussian fields. After one snapshot spacing (0.495) in the solver
-  the spectrum of the Gaussian fields changes by 0.17 to 0.22 (mean abs log ratio) against 0.026
-  and 0.036 for the networks and 0.001 for real fields (over shells 1 to 20: 0.15 to 0.20 against
-  0.0145 and 0.0263). On the validation fields, which also select the checkpoint, the network
-  predicts the noise with an error of 0.071 and the exact Gaussian denoiser with 0.120 (the
-  noise error on the test fields was not computed).
+  fields and 3.0 to 3.1 for the Gaussian fields (3.2 when a Gaussian field is mapped onto the
+  training values). After one snapshot spacing (0.495) in the solver the spectrum of the Gaussian
+  fields changes by 0.17 to 0.22 (mean abs log ratio) against 0.026 and 0.036 for the networks and
+  0.001 for real fields (over shells 1 to 20: 0.15 to 0.20 against 0.0145 and 0.0263). On the
+  validation fields, which also select the checkpoint, the network predicts the noise with an
+  error of 0.071 and the exact Gaussian denoiser with 0.120 (the noise error on the test fields
+  was not computed).
 - **The forcing channel fixes the phase, the drift under the solver and part of the
   reconstruction error, not the spectrum or the tails.** The coherence of the forced Fourier
   mode is 0.974 and 0.971 for two seeds with the channel (real fields 0.966) and 0.039 without
@@ -223,6 +224,32 @@ three seeds).
   0.91, 0.63 against 1.24, 1.19, 1.02, 0.70). Replacement conditioning is a plain scheme and is
   not an exact posterior sampler.
 
+### Gaussian copula control
+
+The flatness and the excess kurtosis of the networks could come from their value distribution
+alone. As a control, the 500 per-mode Gaussian fields of the diagnostics ("G mode") have their
+values mapped onto the pooled values of the 2000 training fields (`scripts/copula.py`, no
+training, a few minutes on a CPU). The fields keep the rank order of the Gaussian field and take
+the value distribution of the training fields.
+
+| set | E(k) all | enstrophy mean | excess kurtosis | KS distance | S2 | S4 | flatness S4 / S2^2 at r = 1 | share outside k=21 | relaxation |
+|---|---|---|---|---|---|---|---|---|---|
+| real held-out | 0 | 2.03 | 0.133 | 0 | 0 | 0 | 4.46 | 4.2e-16 | 0.000956 |
+| real train | 0.0391 | 1.96 | 0.131 | 0.00657 | 0.0272 | 0.0589 | 4.42 | 4.22e-16 | 0.00497 |
+| G mode | 0.0419 | 1.97 | -0.0133 | 0.0149 | 0.0259 | 0.186 | 3.13 | 4.39e-16 | 0.188 |
+| G mode, training values | 0.0384 | 1.96 | 0.131 | 0.0064 | 0.0295 | 0.177 | 3.2 | 9.71e-05 | 0.192 |
+| diffusion, forcing channel | 0.439 | 1.46 | 0.371 | 0.0432 | 0.326 | 0.662 | 4.1 | 0.00025 | 0.0262 |
+| diffusion, no forcing channel | 0.428 | 1.49 | 0.331 | 0.0398 | 0.314 | 0.64 | 4.1 | 0.000237 | 0.0362 |
+
+The mapping gives the training value distribution (excess kurtosis 0.131, KS distance 0.0064),
+but the flatness of the increments at r = 1 only rises from 3.13 to 3.2, against 4.1 for both
+networks and 4.46 for held-out fields: the value distribution alone does not give the flatness
+of the networks. The excess kurtosis of the networks (0.331 and 0.371) is above that of the
+control and of the real fields (0.131 and 0.133). On the other columns the control behaves like
+the Gaussian field: E(k) error 0.0384 against 0.0419, S4 error 0.177 against 0.186, change under
+the solver 0.192 against 0.188 (0.0262 and 0.0362 for the networks). The nonlinear mapping puts
+9.7e-5 of the mean square beyond the solver cutoff.
+
 ### Sampler and network variants
 
 | set | E(k) low | E(k) mid | E(k) high | E(k) all | enstrophy mean | S4 | excess kurtosis | KS distance | share outside k=21 | coherence | relaxation |
@@ -364,26 +391,28 @@ the test fields was not computed: the weights were not kept.
 |---|---|
 | `src/turbdiff/solver.py` | pseudo-spectral solver (integrating-factor RK4, 2/3 rule), batched, CPU or GPU |
 | `src/turbdiff/spectra.py` | shell spectra E(k), isotropic averaging, band errors |
-| `src/turbdiff/gaussian.py` | Gaussian random field (per mode or per shell), kriging, exact Gaussian denoiser |
+| `src/turbdiff/gaussian.py` | Gaussian random field (per mode or per shell), kriging, exact Gaussian denoiser, mapping of values onto a reference distribution |
 | `src/turbdiff/unet.py`, `diffusion.py` | periodic UNet with an optional forcing channel, cosine schedule, DDPM loss, DDIM sampler with replacement conditioning, EMA |
 | `src/turbdiff/data.py` | trajectory generation, symmetries of the flow and random augmentation, loading |
 | `src/turbdiff/diagnostics.py`, `reconstruct.py` | PDF moments, structure functions, nearest-neighbour check, reconstruction metrics |
 | `scripts/make_data.py`, `check_solver.py` | data generation and solver checks, write `results/solver.json` |
 | `scripts/train.py`, `sampler_start.py`, `evaluate.py`, `reconstruct.py` | training, DDIM start comparison, diagnostics and solver consistency, sparse-observation experiment |
+| `scripts/copula.py` | Gaussian copula control with the training values, writes `results/copula.json` |
 | `scripts/report.py`, `figures.py` | markdown tables and figures from `results/` |
 | `tests/` | analytic tests of the solver and of every other module, and checks that the tables and commands of this README match `scripts/report.py` and `results/` (70 tests) |
 | `results/` | JSON, CSV, NPZ and PNG files that the tables and figures above come from (no weights) |
 
 ## Reproduce
 
-On a laptop CPU (data generation takes about six minutes with four threads, the tests under
-half a minute on an idle machine):
+On a laptop CPU (data generation takes about six minutes with four threads, the copula control
+about two minutes, the tests under a minute on an idle machine):
 
 ```
 pip install -e ".[dev]"
 pytest -q
 python scripts/make_data.py          # data/turb.npz, results/solver.json
 python scripts/check_solver.py       # adds the checks to results/solver.json
+python scripts/copula.py             # results/copula.json
 ```
 
 Training, evaluation and the reconstruction experiment ran on a Colab T4 with the
@@ -528,10 +557,10 @@ then over the three seeds (with their standard deviation).
   unconditional samples and no sensitivity to the start level was run for it, while kriging has
   nothing to tune; the start level moves the unconditional spectrum error (see the sampler
   start tables), so it may move the reconstruction errors too.
-- The flatness and the excess kurtosis of the networks are compared with Gaussian fields only. A
-  non-Gaussian baseline with the same value distribution (for example a Gaussian copula of the
-  training fields) was not run, so it is not known how much of the flatness 4.1 and of the excess
-  kurtosis 0.33 to 0.37 the value distribution alone gives.
+- The flatness and the excess kurtosis of the networks are compared with Gaussian fields and
+  with one non-Gaussian control, a Gaussian copula with the training values (see Gaussian copula
+  control). Other surrogates with the same value distribution, for example phase-randomised
+  fields, were not run.
 - The checkpoint and the replacement variant were chosen on the validation trajectory, never on
   the test fields. The DDIM start (signal level 1e-3) was set as the sampler default before the
   comparison on validation was committed, and it gives the highest validation spectrum error of

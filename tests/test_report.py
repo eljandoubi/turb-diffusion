@@ -150,6 +150,21 @@ def test_spin_up_windows_are_reported_against_the_snapshot_mean(report):
     )
 
 
+def test_copula_control_keeps_the_gaussian_flatness_and_the_training_values(report):
+    results = ROOT / "results"
+    control = json.loads((results / "copula.json").read_text())["sources"]
+    control = control["g_mode_copula"]
+    sources = json.loads((results / "diagnostics.json").read_text())["sources"]
+    flat = {k: report.flatness(v["structure_functions"]) for k, v in sources.items()}
+    mapped = report.flatness(control["structure_functions"])
+    assert flat["g_mode"] < mapped < flat["g_mode"] + 0.2
+    assert mapped + 0.5 < min(flat["diffusion"], flat["diffusion_plain"])
+    train_kurtosis = sources["real_train"]["excess_kurtosis"]
+    assert abs(control["excess_kurtosis"] - train_kurtosis) < 0.01
+    networks = (sources["diffusion"], sources["diffusion_plain"])
+    assert min(n["excess_kurtosis"] for n in networks) > train_kurtosis + 0.1
+
+
 def test_time_step_check_names_its_own_time_span(report):
     info = solver_info()
     row = next(

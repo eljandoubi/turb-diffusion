@@ -2,7 +2,27 @@ import torch
 
 from turbdiff import spectra
 from turbdiff.diffusion import Schedule
-from turbdiff.gaussian import GaussianField, condition, noise_prediction_error
+from turbdiff.gaussian import (
+    GaussianField,
+    condition,
+    match_values,
+    noise_prediction_error,
+)
+
+
+def test_match_values_takes_the_reference_values_in_the_order_of_x():
+    g = torch.Generator().manual_seed(7)
+    x = torch.randn(4, 16, 16, generator=g, dtype=torch.float64)
+    ref = -torch.log(torch.rand(3, 16, 16, generator=g, dtype=torch.float64))
+    y = match_values(x, ref)
+    assert y.shape == x.shape
+    along_x = y.reshape(-1)[x.reshape(-1).argsort()]
+    assert (along_x[1:] >= along_x[:-1]).all()
+    q = torch.linspace(0.02, 0.98, 25, dtype=torch.float64)
+    assert torch.allclose(
+        torch.quantile(y.reshape(-1), q), torch.quantile(ref.reshape(-1), q), atol=0.02
+    )
+    assert abs(float(y.mean() - ref.mean())) < 0.01
 
 
 def anisotropic_power(n=64, kmax=10):

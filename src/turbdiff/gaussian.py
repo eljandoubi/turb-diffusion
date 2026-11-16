@@ -51,6 +51,20 @@ class GaussianField:
         return (self.n**2 * torch.fft.ifft2(self.power)).real
 
 
+def match_values(x: torch.Tensor, reference: torch.Tensor) -> torch.Tensor:
+    """Monotone map of the pooled values of x onto those of reference.
+
+    The result keeps the rank order of x and takes its values from the sorted
+    values of reference (a Gaussian copula when x is a Gaussian field).
+    """
+    flat = x.reshape(-1)
+    ranks = torch.empty(len(flat), dtype=torch.long)
+    ranks[flat.argsort()] = torch.arange(len(flat))
+    target = reference.reshape(-1).sort().values
+    index = ranks * (len(target) - 1) // (len(flat) - 1)
+    return target[index].reshape(x.shape).to(x.dtype)
+
+
 def noise_prediction_error(
     power: torch.Tensor,
     sched: Schedule,

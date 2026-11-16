@@ -268,6 +268,52 @@ def steps_table(diag: dict, cons: dict) -> str:
     return table(header, rows)
 
 
+def copula_table(copula: dict, diag: dict, cons: dict) -> str:
+    """The Gaussian copula control next to the other sets, on the same metrics."""
+    rows = []
+    for key in (
+        "real_test",
+        "real_train",
+        "g_mode",
+        "g_mode_copula",
+        "diffusion",
+        "diffusion_plain",
+    ):
+        if key in copula["sources"]:
+            d, c = copula["sources"][key], copula["consistency"][key]
+            label = "G mode, training values"
+        else:
+            d, c = diag["sources"][key], cons["sources"][key]
+            label = titles(diag["setup"])[key]
+        rows.append(
+            [
+                label,
+                g(d["band_log_ratio"]["all"]),
+                g(d["enstrophy_mean"]),
+                g(d["excess_kurtosis"]),
+                g(d["ks_distance"]),
+                g(d["structure_log_ratio"]["S2"]),
+                g(d["structure_log_ratio"]["S4"]),
+                g(flatness(d["structure_functions"])),
+                g(d["mean_square_outside_cutoff"]),
+                g(c["band_log_ratio"]["all"]),
+            ]
+        )
+    header = [
+        "set",
+        "E(k) all",
+        "enstrophy mean",
+        "excess kurtosis",
+        "KS distance",
+        "S2",
+        "S4",
+        "flatness S4 / S2^2 at r = 1",
+        "share outside k=21",
+        "relaxation",
+    ]
+    return table(header, rows)
+
+
 def start_table(start: dict) -> str:
     rows = []
     for level, s in start["start"].items():
@@ -496,6 +542,15 @@ def main() -> None:
     if all(starts):
         print("### Sampler start, range of the E(k) error\n")
         print(start_summary([s for s in starts if s]))
+        print()
+    copula, diag, cons = (
+        read("copula.json"),
+        read("diagnostics.json"),
+        read("consistency.json"),
+    )
+    if copula and diag and cons:
+        print("### Gaussian copula control\n")
+        print(copula_table(copula, diag, cons))
         print()
     both = (RESULTS / "diagnostics.json", RESULTS / "consistency.json")
     if all(p.exists() for p in both):
