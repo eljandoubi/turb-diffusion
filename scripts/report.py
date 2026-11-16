@@ -297,6 +297,7 @@ def networks_table() -> str | None:
         column += [g(d["structure_log_ratio"][o]) for o in ("S2", "S4")]
         column += [g(flatness(d["structure_functions"]))]
         column += [g(d["forced_mode_coherence"]), g(c["band_log_ratio"]["all"])]
+        column += [g(c["enstrophy_relative_change"]), g(c["energy_relative_change"])]
         column += [
             g(r["results"][p]["diffusion"]["relative_l2"]["mean"])
             for p in ("1", "2", "5", "10")
@@ -317,6 +318,8 @@ def networks_table() -> str | None:
         "flatness S4 / S2^2 at r = 1",
         "forced-mode coherence",
         "E(k) change after one turnover time",
+        "enstrophy change after one turnover time",
+        "energy change after one turnover time",
         "reconstruction L2, 1% of the points",
         "reconstruction L2, 2% of the points",
         "reconstruction L2, 5% of the points",
