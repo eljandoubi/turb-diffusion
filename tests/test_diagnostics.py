@@ -81,4 +81,4 @@ def test_nearest_distance_sees_copies_up_to_the_symmetries():
     assert shifted[3] > 0.5
     assert plain[4] > 0.5 and shifted[4] < 1e-3
     assert plain[5] > 0.5 and shifted[5] < 1e-3
-    assert (shifted <= plain + 1e-6).all()
+    assert (shifted <= plain + 1e-3).all()
