@@ -315,10 +315,12 @@ reason given in the code is the stability of the chain at the end of the schedul
 spectrum. The result files behind the two tables above were committed the next day (a552c54), so
 the history does not show that 1e-3 was picked from them. They show that, for both networks, 1e-3
 gives the highest E(k) error of the four starts and the lowest share of mean square outside the
-cutoff (0.00025, against 0.0075 and 0.010 at 1e-6). The spectrum errors of the diffusion rows in
-this README are therefore a property of this start as well as of the networks: on validation a
-start at 1e-6 lowers the error by 0.15 to 0.17. The test-set error was computed only for the
-start used, not for the other starts.
+cutoff (0.00025, against 0.0075 and 0.010 at 1e-6). At 1e-6 the E(k) error is the lowest, but the
+enstrophy is 1.67 and 1.48 times the validation value and the largest value reaches 19.6 and 12.9
+standard deviations. The spectrum errors of the diffusion rows in this README are therefore a
+property of this start as well as of the networks: on validation a start at 1e-6 lowers the error
+by 0.15 to 0.17. The test-set error was computed only for the start used, not for the other
+starts.
 
 ### Networks and seeds
 
@@ -399,7 +401,7 @@ the test fields was not computed: the weights were not kept.
 | `scripts/train.py`, `sampler_start.py`, `evaluate.py`, `reconstruct.py` | training, DDIM start comparison, diagnostics and solver consistency, sparse-observation experiment |
 | `scripts/copula.py` | Gaussian copula control with the training values, writes `results/copula.json` |
 | `scripts/report.py`, `figures.py` | markdown tables and figures from `results/` |
-| `tests/` | analytic tests of the solver and of every other module, and checks that the tables and commands of this README match `scripts/report.py` and `results/` (70 tests) |
+| `tests/` | analytic tests of the solver and of every other module, and checks that the tables and commands of this README match `scripts/report.py` and `results/` (72 tests) |
 | `results/` | JSON, CSV, NPZ and PNG files that the tables and figures above come from (no weights) |
 
 ## Reproduce
