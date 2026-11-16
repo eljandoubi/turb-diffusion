@@ -371,7 +371,7 @@ the test fields was not computed: the weights were not kept.
 | `scripts/make_data.py`, `check_solver.py` | data generation and solver checks, write `results/solver.json` |
 | `scripts/train.py`, `sampler_start.py`, `evaluate.py`, `reconstruct.py` | training, DDIM start comparison, diagnostics and solver consistency, sparse-observation experiment |
 | `scripts/report.py`, `figures.py` | markdown tables and figures from `results/` |
-| `tests/` | analytic tests of the solver and of every other module (56 tests) |
+| `tests/` | analytic tests of the solver and of every other module, and checks that the tables and commands of this README match `scripts/report.py` and `results/` (70 tests) |
 | `results/` | JSON, CSV, NPZ and PNG files that the tables and figures above come from (no weights) |
 
 ## Reproduce
@@ -424,7 +424,10 @@ python scripts/figures.py && python scripts/report.py
 
 The evaluation of the first network alone (without `--plain`) is not part of the tables. Training
 takes about 20 to 22 minutes per network, the evaluation 6 to 8 minutes and the reconstruction
-about 3 minutes on the T4.
+about 3 minutes on the T4. The CI of the repository runs the lint, the tests (which include the
+check that the tables and commands of this README match `scripts/report.py` and `results/`) and
+`scripts/report.py`. It does not run the data generation, the training, the evaluation or the
+reconstruction, which need `data/turb.npz` and a GPU.
 
 ## Method notes
 
@@ -521,7 +524,14 @@ then over the three seeds (with their standard deviation).
   Gaussian oracle).
 - The reconstruction by replacement is a simple scheme and did not beat Gaussian conditioning. A
   sampler that targets the posterior (or a network trained for the observation pattern) may do
-  better; none was tried.
+  better; none was tried. The diffusion reconstruction uses the start and the 50 steps of the
+  unconditional samples and no sensitivity to the start level was run for it, while kriging has
+  nothing to tune; the start level moves the unconditional spectrum error (see the sampler
+  start tables), so it may move the reconstruction errors too.
+- The flatness and the excess kurtosis of the networks are compared with Gaussian fields only. A
+  non-Gaussian baseline with the same value distribution (for example a Gaussian copula of the
+  training fields) was not run, so it is not known how much of the flatness 4.1 and of the excess
+  kurtosis 0.33 to 0.37 the value distribution alone gives.
 - The checkpoint and the replacement variant were chosen on the validation trajectory, never on
   the test fields. The DDIM start (signal level 1e-3) was set as the sampler default before the
   comparison on validation was committed, and it gives the highest validation spectrum error of
